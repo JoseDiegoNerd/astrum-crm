@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Typecheck, build e testes (PGlite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:3333
+      - run: pnpm test
+
+  rls-supabase:
+    name: Isolamento RLS no Postgres real do Supabase
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+      - run: pnpm install --frozen-lockfile
+      # sobe só o Postgres local e aplica supabase/migrations
+      - run: supabase db start
+      - run: pnpm --filter @astrum/db test
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres

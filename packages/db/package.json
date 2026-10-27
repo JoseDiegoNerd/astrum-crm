@@ -1,0 +1,27 @@
+{
+  "name": "@astrum/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.4",
+    "postgres": "3.4.9"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.12",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "4.1.12"
+  }
+}
