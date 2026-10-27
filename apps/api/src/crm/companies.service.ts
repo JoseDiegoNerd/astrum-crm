@@ -20,8 +20,11 @@ import {
 } from '@astrum/db';
 import { DATABASE } from '../database/database.module.js';
 import type { WorkspaceContext } from '../http/request.js';
-import type { CreateCompanyInput, ListCompaniesInput, UpdateCompanyInput } from './crm.schemas.js';
+import type { CreateCompanyInput, ListCompaniesInput, SetTagsInput, UpdateCompanyInput } from './crm.schemas.js';
+import { applyCustomFields } from './custom-fields.js';
 import { afterCursor, decodeCursor, likePattern, page } from './pagination.js';
+import { fieldsOf } from './settings.service.js';
+import { hasTag, replaceTags, tagsOf } from './tagging.js';
 
 @Injectable()
 export class CompaniesService {
@@ -34,6 +37,7 @@ export class CompaniesService {
         input.archived ? isNotNull(companies.archivedAt) : isNull(companies.archivedAt),
       ];
       if (input.cursor) where.push(afterCursor(companies.createdAt, companies.id, decodeCursor(input.cursor)));
+      if (input.tag) where.push(hasTag(tx, 'company', companies.id, input.tag));
       if (input.q) {
         const pattern = likePattern(input.q);
         const digits = input.q.replace(/\D/g, '');
@@ -55,7 +59,9 @@ export class CompaniesService {
         .orderBy(desc(companies.createdAt), desc(companies.id))
         .limit(input.limit + 1);
 
-      return page(rows.map((r) => ({ ...r.company, contactCount: r.contactCount })), input.limit);
+      const result = page(rows.map((r) => ({ ...r.company, contactCount: r.contactCount })), input.limit);
+      const tagMap = await tagsOf(tx, 'company', result.items.map((c) => c.id));
+      return { ...result, items: result.items.map((c) => ({ ...c, tags: tagMap.get(c.id) ?? [] })) };
     });
   }
 
@@ -65,6 +71,7 @@ export class CompaniesService {
 
   create(user: JwtClaims, ws: WorkspaceContext, input: CreateCompanyInput) {
     return withUserContext(this.db, user, async (tx) => {
+      const custom = applyCustomFields(await fieldsOf(tx, ws, 'company'), input.custom ?? {});
       const [company] = await insertRows(tx, companies, {
         tenantId: ws.tenantId,
         workspaceId: ws.id,
@@ -73,6 +80,7 @@ export class CompaniesService {
         domain: input.domain ?? undefined,
         phone: input.phone ?? undefined,
         ownerId: input.ownerId ?? undefined,
+        custom,
       });
       return findCompany(tx, ws, company!.id);
     });
@@ -80,7 +88,19 @@ export class CompaniesService {
 
   update(user: JwtClaims, ws: WorkspaceContext, id: string, input: UpdateCompanyInput) {
     return withUserContext(this.db, user, async (tx) => {
-      await updateOrFail(tx, ws, id, input);
+      const custom =
+        input.custom === undefined
+          ? undefined
+          : applyCustomFields(await fieldsOf(tx, ws, 'company'), input.custom, (await findCompany(tx, ws, id)).custom);
+      await updateOrFail(tx, ws, id, { ...input, custom });
+      return findCompany(tx, ws, id);
+    });
+  }
+
+  setTags(user: JwtClaims, ws: WorkspaceContext, id: string, input: SetTagsInput) {
+    return withUserContext(this.db, user, async (tx) => {
+      await findCompany(tx, ws, id);
+      await replaceTags(tx, ws, 'company', id, input.tagIds);
       return findCompany(tx, ws, id);
     });
   }
@@ -116,7 +136,8 @@ async function findCompany(tx: Transaction, ws: WorkspaceContext, id: string) {
     .where(and(eq(contacts.companyId, id), isNull(contacts.archivedAt)))
     .orderBy(asc(contacts.name))
     .limit(200);
-  return { ...company, contacts: people };
+  const tagMap = await tagsOf(tx, 'company', [id]);
+  return { ...company, contacts: people, tags: tagMap.get(id) ?? [] };
 }
 
 async function updateOrFail(

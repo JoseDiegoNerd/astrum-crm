@@ -11,7 +11,7 @@ export class ApiError extends Error {
 }
 
 interface ApiOptions {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   workspaceId?: string;
 }
@@ -105,6 +105,7 @@ export interface ContactSummary {
   archivedAt: string | null;
   createdAt: string;
   identities: ContactIdentity[];
+  tags: TagSummary[];
 }
 
 export interface Contact {
@@ -117,6 +118,8 @@ export interface Contact {
   createdAt: string;
   company: { id: string; name: string } | null;
   identities: ContactIdentity[];
+  tags: TagSummary[];
+  custom: CustomValues;
 }
 
 export interface CompanySummary {
@@ -127,9 +130,39 @@ export interface CompanySummary {
   phone: string | null;
   archivedAt: string | null;
   contactCount: number;
+  tags: TagSummary[];
 }
 
 export interface Company extends CompanySummary {
   ownerId: string | null;
+  custom: CustomValues;
   contacts: { id: string; name: string; type: ContactType }[];
 }
+
+// --- Tags e campos customizados ---
+
+export interface TagSummary {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface Tag extends TagSummary {
+  usage: { contacts: number; companies: number };
+}
+
+export type CustomFieldEntity = "contact" | "company" | "deal";
+export type CustomFieldType = "text" | "number" | "date" | "boolean" | "select" | "multiselect";
+
+export interface CustomFieldDef {
+  id: string;
+  entity: CustomFieldEntity;
+  key: string;
+  label: string;
+  type: CustomFieldType;
+  options: string[];
+  required: boolean;
+  position: number;
+}
+
+export type CustomValues = Record<string, unknown>;

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ApiError, type Company } from "@/lib/api";
+import { customPatchFrom } from "@/lib/custom-form";
 import { workspaceApi } from "@/lib/session";
 
 const field = (formData: FormData, name: string) => String(formData.get(name) ?? "").trim();
@@ -25,6 +26,7 @@ const companyBody = (formData: FormData) => ({
   document: field(formData, "document"),
   domain: field(formData, "domain"),
   phone: field(formData, "phone"),
+  custom: customPatchFrom(formData),
 });
 
 export async function createCompany(formData: FormData) {
@@ -38,6 +40,13 @@ export async function updateCompany(formData: FormData) {
   const id = field(formData, "id");
   await run(`/companies/${id}`, async () => {
     await workspaceApi(`/companies/${id}`, { method: "PATCH", body: companyBody(formData) });
+  });
+}
+
+export async function setCompanyTags(formData: FormData) {
+  const id = field(formData, "id");
+  await run(`/companies/${id}`, async () => {
+    await workspaceApi(`/companies/${id}/tags`, { method: "PUT", body: { tagIds: formData.getAll("tagIds").map(String) } });
   });
 }
 

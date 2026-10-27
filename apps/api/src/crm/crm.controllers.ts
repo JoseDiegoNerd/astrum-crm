@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -26,6 +27,18 @@ import {
   updateCompanySchema,
   updateContactSchema,
   updateIdentitySchema,
+  createFieldSchema,
+  createTagSchema,
+  listFieldsSchema,
+  setTagsSchema,
+  updateFieldSchema,
+  updateTagSchema,
+  type CreateFieldInput,
+  type CreateTagInput,
+  type ListFieldsInput,
+  type SetTagsInput,
+  type UpdateFieldInput,
+  type UpdateTagInput,
   type CreateCompanyInput,
   type CreateContactInput,
   type IdentityInput,
@@ -34,6 +47,7 @@ import {
   type UpdateCompanyInput,
   type UpdateContactInput,
 } from './crm.schemas.js';
+import { SettingsService } from './settings.service.js';
 
 // Rotas de workspace: exigem o header X-Workspace-Id.
 
@@ -91,6 +105,17 @@ export class ContactsController {
   @HttpCode(204)
   remove(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext, @Param('id', uuidParam) id: string) {
     return this.contacts.remove(user, ws, id);
+  }
+
+  /** Substitui as tags do contato pelas informadas. */
+  @Put(':id/tags')
+  setTags(
+    @CurrentUser() user: JwtClaims,
+    @CurrentWorkspace() ws: WorkspaceContext,
+    @Param('id', uuidParam) id: string,
+    @Body(new ZodPipe(setTagsSchema)) body: SetTagsInput,
+  ) {
+    return this.contacts.setTags(user, ws, id, body);
   }
 
   @Post(':id/identities')
@@ -179,5 +204,86 @@ export class CompaniesController {
   @HttpCode(204)
   remove(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext, @Param('id', uuidParam) id: string) {
     return this.companies.remove(user, ws, id);
+  }
+
+  @Put(':id/tags')
+  setTags(
+    @CurrentUser() user: JwtClaims,
+    @CurrentWorkspace() ws: WorkspaceContext,
+    @Param('id', uuidParam) id: string,
+    @Body(new ZodPipe(setTagsSchema)) body: SetTagsInput,
+  ) {
+    return this.companies.setTags(user, ws, id, body);
+  }
+}
+
+/** Configuração do workspace: tags e campos customizados (escrita só para managers). */
+@Controller()
+@UseGuards(WorkspaceGuard)
+export class SettingsController {
+  constructor(@Inject(SettingsService) private readonly settings: SettingsService) {}
+
+  @Get('tags')
+  listTags(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext) {
+    return this.settings.listTags(user, ws);
+  }
+
+  @Post('tags')
+  createTag(
+    @CurrentUser() user: JwtClaims,
+    @CurrentWorkspace() ws: WorkspaceContext,
+    @Body(new ZodPipe(createTagSchema)) body: CreateTagInput,
+  ) {
+    return this.settings.createTag(user, ws, body);
+  }
+
+  @Patch('tags/:id')
+  updateTag(
+    @CurrentUser() user: JwtClaims,
+    @CurrentWorkspace() ws: WorkspaceContext,
+    @Param('id', uuidParam) id: string,
+    @Body(new ZodPipe(updateTagSchema)) body: UpdateTagInput,
+  ) {
+    return this.settings.updateTag(user, ws, id, body);
+  }
+
+  @Delete('tags/:id')
+  @HttpCode(204)
+  deleteTag(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext, @Param('id', uuidParam) id: string) {
+    return this.settings.deleteTag(user, ws, id);
+  }
+
+  @Get('custom-fields')
+  listFields(
+    @CurrentUser() user: JwtClaims,
+    @CurrentWorkspace() ws: WorkspaceContext,
+    @Query(new ZodPipe(listFieldsSchema)) query: ListFieldsInput,
+  ) {
+    return this.settings.listFields(user, ws, query);
+  }
+
+  @Post('custom-fields')
+  createField(
+    @CurrentUser() user: JwtClaims,
+    @CurrentWorkspace() ws: WorkspaceContext,
+    @Body(new ZodPipe(createFieldSchema)) body: CreateFieldInput,
+  ) {
+    return this.settings.createField(user, ws, body);
+  }
+
+  @Patch('custom-fields/:id')
+  updateField(
+    @CurrentUser() user: JwtClaims,
+    @CurrentWorkspace() ws: WorkspaceContext,
+    @Param('id', uuidParam) id: string,
+    @Body(new ZodPipe(updateFieldSchema)) body: UpdateFieldInput,
+  ) {
+    return this.settings.updateField(user, ws, id, body);
+  }
+
+  @Delete('custom-fields/:id')
+  @HttpCode(204)
+  deleteField(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext, @Param('id', uuidParam) id: string) {
+    return this.settings.deleteField(user, ws, id);
   }
 }

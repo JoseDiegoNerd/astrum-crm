@@ -2,6 +2,7 @@
 // A fonte da verdade do schema são as migrations em supabase/migrations/.
 import {
   boolean,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -139,6 +140,60 @@ export const contactIdentities = pgTable('contact_identities', {
   verified: boolean('verified').notNull().default(false),
   ...timestamps,
 });
+
+// --- F1.2 · Tags e campos customizados ------------------------------------------
+
+export const customFieldEntity = pgEnum('custom_field_entity', ['contact', 'company', 'deal']);
+export const customFieldType = pgEnum('custom_field_type', [
+  'text',
+  'number',
+  'date',
+  'boolean',
+  'select',
+  'multiselect',
+]);
+
+export const tags = pgTable('tags', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  name: text('name').notNull(),
+  color: text('color').notNull().default('#6366f1'),
+  ...timestamps,
+});
+
+export const contactTags = pgTable('contact_tags', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  contactId: uuid('contact_id').notNull(),
+  tagId: uuid('tag_id').notNull(),
+  ...timestamps,
+});
+
+export const companyTags = pgTable('company_tags', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  companyId: uuid('company_id').notNull(),
+  tagId: uuid('tag_id').notNull(),
+  ...timestamps,
+});
+
+export const customFieldDefs = pgTable('custom_field_defs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  entity: customFieldEntity('entity').notNull(),
+  key: text('key').notNull(),
+  label: text('label').notNull(),
+  type: customFieldType('type').notNull(),
+  options: jsonb('options').$type<string[]>().notNull().default([]),
+  required: boolean('required').notNull().default(false),
+  position: integer('position').notNull().default(0),
+  ...timestamps,
+});
+
+export type Tag = typeof tags.$inferSelect;
+export type CustomFieldDef = typeof customFieldDefs.$inferSelect;
+export type CustomFieldEntity = (typeof customFieldEntity.enumValues)[number];
+export type CustomFieldType = (typeof customFieldType.enumValues)[number];
 
 export type ContactType = (typeof contactType.enumValues)[number];
 export type LgpdStatus = (typeof lgpdStatus.enumValues)[number];

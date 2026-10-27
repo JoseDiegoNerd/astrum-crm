@@ -20,6 +20,7 @@ const NAV = [
   { href: "/contacts", label: "Contatos" },
   { href: "/companies", label: "Empresas" },
   { href: "/team", label: "Equipe" },
+  { href: "/settings", label: "Configurações" },
 ] as const;
 
 async function Header() {

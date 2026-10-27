@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { CustomFieldInputs, TagChips } from "@/components/crm";
 import { Button, Card, Input, Notice, Select } from "@/components/ui";
-import type { CompanySummary, ContactSummary, Page } from "@/lib/api";
+import type { CompanySummary, ContactSummary, CustomFieldDef, Page, TagSummary } from "@/lib/api";
 import { CHANNELS, CONTACT_TYPES, formatIdentifier } from "@/lib/labels";
 import { canEdit, requireWorkspace, workspaceApi } from "@/lib/session";
 import { createContact } from "./actions";
@@ -10,18 +11,24 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
   const str = (key: string) => (typeof params[key] === "string" ? (params[key] as string) : undefined);
   const q = str("q") ?? "";
   const type = str("type") ?? "";
+  const tag = str("tag") ?? "";
   const archived = str("archived") === "true";
 
   const query = new URLSearchParams({ archived: String(archived), limit: "50" });
   if (q) query.set("q", q);
   if (type) query.set("type", type);
+  if (tag) query.set("tag", tag);
   if (str("cursor")) query.set("cursor", str("cursor")!);
 
-  const [current, contacts, companies] = await Promise.all([
+  const [current, contacts, companies, tags, fields] = await Promise.all([
     requireWorkspace(),
     workspaceApi<Page<ContactSummary>>(`/contacts?${query}`),
     workspaceApi<Page<CompanySummary>>("/companies?limit=100"),
+    workspaceApi<TagSummary[]>("/tags"),
+    workspaceApi<CustomFieldDef[]>("/custom-fields?entity=contact"),
   ]);
+  // no cadastro rápido entram só os campos obrigatórios; o resto fica na ficha
+  const requiredFields = fields.filter((f) => f.required);
   const nextPage = new URLSearchParams(query);
   if (contacts.nextCursor) nextPage.set("cursor", contacts.nextCursor);
 
@@ -46,6 +53,14 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
               </option>
             ))}
           </Select>
+          <Select name="tag" defaultValue={tag} aria-label="Tag">
+            <option value="">Todas as tags</option>
+            {tags.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </Select>
           <Select name="archived" defaultValue={String(archived)} aria-label="Situação">
             <option value="false">Ativos</option>
             <option value="true">Arquivados</option>
@@ -67,7 +82,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
               {contacts.items.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-zinc-500">
-                    {q || type ? "Nenhum contato encontrado com esses filtros." : "Nenhum contato ainda."}
+                    {q || type || tag ? "Nenhum contato encontrado com esses filtros." : "Nenhum contato ainda."}
                   </td>
                 </tr>
               )}
@@ -76,9 +91,10 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
                 return (
                   <tr key={c.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900">
                     <td className="px-4 py-2">
-                      <Link href={`/contacts/${c.id}`} className="font-medium hover:underline">
+                      <Link href={`/contacts/${c.id}`} className="mr-2 font-medium hover:underline">
                         {c.name}
                       </Link>
+                      <TagChips tags={c.tags} />
                     </td>
                     <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">
                       {primary && (
@@ -131,6 +147,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
                   </option>
                 ))}
               </Select>
+              <CustomFieldInputs defs={requiredFields} />
               <Button>Criar contato</Button>
             </form>
           </Card>

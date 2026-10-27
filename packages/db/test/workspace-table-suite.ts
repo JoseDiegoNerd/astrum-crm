@@ -11,8 +11,13 @@ export interface WorkspaceTableSpec {
    * contato criado ali); ela roda como superusuário antes de cada insert.
    */
   values: Record<string, unknown> | ((ws: WorkspaceRef, db: TestDatabase) => Promise<Record<string, unknown>>);
-  /** Alteração válida de uma coluna editável. */
-  update: Record<string, unknown>;
+  /** Alteração válida de uma coluna editável. Omita em tabelas sem UPDATE (ex.: junções). */
+  update?: Record<string, unknown>;
+  /**
+   * Quem escreve: 'agent' (padrão — dados do dia a dia) ou 'manager'
+   * (configuração do workspace, ex.: tags e campos customizados).
+   */
+  writers?: 'agent' | 'manager';
   /** Roda antes do seed (ex.: criar a tabela num teste de template). */
   setup?: (db: TestDatabase) => Promise<void>;
   teardown?: (db: TestDatabase) => Promise<void>;
@@ -31,12 +36,15 @@ export interface WorkspaceRef {
  * Suíte de isolamento obrigatória para toda tabela de negócio de workspace.
  * Verifica o padrão do template packages/db/templates/workspace-table.sql:
  * viewer lê · agent cria/edita · manager (e owner/admin) apaga · ninguém de fora vê nada.
+ * Com writers: 'manager', só manager cria/edita (configuração do workspace).
  *
  *   describeWorkspaceTable({ table: 'contacts', values: { name: 'Ana' }, update: { name: 'Ana B.' } });
  */
 export function describeWorkspaceTable(spec: WorkspaceTableSpec) {
   const { table } = spec;
-  const setClause = Object.keys(spec.update).map((c, i) => `${c} = $${i + 2}`).join(', ');
+  const updates = spec.update;
+  const managerOnly = spec.writers === 'manager';
+  const setClause = updates ? Object.keys(updates).map((c, i) => `${c} = $${i + 2}`).join(', ') : '';
 
   let db: TestDatabase;
   const valuesFor = (tenantId: string, workspaceId: string) =>
@@ -64,21 +72,23 @@ export function describeWorkspaceTable(spec: WorkspaceTableSpec) {
   const update = (q: Queryable, id: string) =>
     q.query(`update public.${table} set ${setClause} where id = $1 returning id`, [
       id,
-      ...Object.values(spec.update),
+      ...Object.values(updates ?? {}),
     ]);
   const remove = (q: Queryable, id: string) =>
     q.query(`delete from public.${table} where id = $1 returning id`, [id]);
 
   describe(`isolamento de ${table}`, () => {
     let t: Tenancy;
-    let rowA1: string; // criada por carol (agent) em A1
+    let rowA1: string; // criada em A1 por carol (agent) ou mia (manager do workspace)
     let rowA2: string; // criada por alice (owner) em A2
+    let creatorA1: string;
 
     beforeAll(async () => {
       db = await createTestDatabase();
       await spec.setup?.(db);
       t = await seedTenancy(db);
-      rowA1 = (await insertAs(t.carol.id, t.tenantA, t.a1))[0]!.id;
+      creatorA1 = managerOnly ? t.mia.id : t.carol.id;
+      rowA1 = (await insertAs(creatorA1, t.tenantA, t.a1))[0]!.id;
       rowA2 = (await insertAs(t.alice.id, t.tenantA, t.a2))[0]!.id;
     });
 
@@ -87,15 +97,25 @@ export function describeWorkspaceTable(spec: WorkspaceTableSpec) {
       await db?.close();
     });
 
-    it('agent cria e edita no próprio workspace', async () => {
-      expect(await db.asUser(t.carol.id, (q) => update(q, rowA1))).toHaveLength(1);
-    });
+    if (managerOnly) {
+      it('agent não cria nem edita; manager do workspace edita', async () => {
+        await expect(insertAs(t.carol.id, t.tenantA, t.a1)).rejects.toThrow(/row-level security/);
+        if (updates) {
+          expect(await db.asUser(t.carol.id, (q) => update(q, rowA1))).toHaveLength(0);
+          expect(await db.asUser(t.mia.id, (q) => update(q, rowA1))).toHaveLength(1);
+        }
+      });
+    } else if (updates) {
+      it('agent cria e edita no próprio workspace', async () => {
+        expect(await db.asUser(t.carol.id, (q) => update(q, rowA1))).toHaveLength(1);
+      });
+    }
 
     if (spec.hasCreatedBy !== false) {
       it('created_by vem de auth.uid() e não pode ser forjado', async () => {
         const row = await one<{ created_by: string }>(db, `select created_by from public.${table} where id = $1`, [rowA1]);
-        expect(row.created_by).toBe(t.carol.id);
-        await expect(insertAs(t.carol.id, t.tenantA, t.a1, { created_by: t.alice.id }))
+        expect(row.created_by).toBe(creatorA1);
+        await expect(insertAs(creatorA1, t.tenantA, t.a1, { created_by: t.alice.id }))
           .rejects.toThrow(/permission denied/);
       });
     }
@@ -103,7 +123,7 @@ export function describeWorkspaceTable(spec: WorkspaceTableSpec) {
     it('viewer lê, mas não cria nem edita', async () => {
       await db.asUser(t.vic.id, async (q) => {
         expect(await ids(q, `select id from public.${table}`)).toEqual([rowA1]);
-        expect(await update(q, rowA1)).toHaveLength(0);
+        if (updates) expect(await update(q, rowA1)).toHaveLength(0);
       });
       await expect(insertAs(t.vic.id, t.tenantA, t.a1)).rejects.toThrow(/row-level security/);
     });
@@ -111,7 +131,7 @@ export function describeWorkspaceTable(spec: WorkspaceTableSpec) {
     it('member não vê nem escreve em workspace onde não está', async () => {
       await db.asUser(t.carol.id, async (q) => {
         expect(await ids(q, `select id from public.${table}`)).toEqual([rowA1]);
-        expect(await update(q, rowA2)).toHaveLength(0);
+        if (updates) expect(await update(q, rowA2)).toHaveLength(0);
       });
       await expect(insertAs(t.carol.id, t.tenantA, t.a2)).rejects.toThrow(/row-level security/);
     });
@@ -125,7 +145,7 @@ export function describeWorkspaceTable(spec: WorkspaceTableSpec) {
     it('outro tenant não lê, não altera, não apaga e não insere', async () => {
       await db.asUser(t.bob.id, async (q) => {
         expect(await q.query(`select 1 from public.${table}`)).toHaveLength(0);
-        expect(await update(q, rowA1)).toHaveLength(0);
+        if (updates) expect(await update(q, rowA1)).toHaveLength(0);
         expect(await remove(q, rowA1)).toHaveLength(0);
       });
       await expect(insertAs(t.bob.id, t.tenantA, t.a1)).rejects.toThrow(/row-level security/);
@@ -151,9 +171,10 @@ export function describeWorkspaceTable(spec: WorkspaceTableSpec) {
         expect(await db.asUser(t.carol.id, (q) => remove(q, rowA1))).toHaveLength(1);
       });
     } else {
-      it('agent não apaga; owner apaga', async () => {
+      it('agent não apaga; manager do workspace e owner apagam', async () => {
         expect(await db.asUser(t.carol.id, (q) => remove(q, rowA1))).toHaveLength(0);
-        expect(await db.asUser(t.alice.id, (q) => remove(q, rowA1))).toHaveLength(1);
+        expect(await db.asUser(t.mia.id, (q) => remove(q, rowA1))).toHaveLength(1);
+        expect(await db.asUser(t.alice.id, (q) => remove(q, rowA2))).toHaveLength(1);
       });
     }
 

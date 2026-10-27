@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ApiError, type Contact } from "@/lib/api";
+import { customPatchFrom } from "@/lib/custom-form";
 import { workspaceApi } from "@/lib/session";
 
 const field = (formData: FormData, name: string) => String(formData.get(name) ?? "").trim();
@@ -34,6 +35,7 @@ export async function createContact(formData: FormData) {
         name: field(formData, "name"),
         type: optional(formData, "type"),
         companyId: optional(formData, "companyId"),
+        custom: customPatchFrom(formData),
         identities,
       },
     });
@@ -51,8 +53,16 @@ export async function updateContact(formData: FormData) {
         type: field(formData, "type"),
         companyId: field(formData, "companyId") || null,
         lgpdStatus: field(formData, "lgpdStatus"),
+        custom: customPatchFrom(formData),
       },
     });
+  });
+}
+
+export async function setContactTags(formData: FormData) {
+  const id = field(formData, "id");
+  await run(`/contacts/${id}`, async () => {
+    await workspaceApi(`/contacts/${id}/tags`, { method: "PUT", body: { tagIds: formData.getAll("tagIds").map(String) } });
   });
 }
 

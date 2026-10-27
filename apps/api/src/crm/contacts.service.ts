@@ -29,9 +29,13 @@ import type {
   CreateContactInput,
   IdentityInput,
   ListContactsInput,
+  SetTagsInput,
   UpdateContactInput,
 } from './crm.schemas.js';
+import { applyCustomFields } from './custom-fields.js';
 import { afterCursor, decodeCursor, likePattern, page } from './pagination.js';
+import { fieldsOf } from './settings.service.js';
+import { hasTag, replaceTags, tagsOf } from './tagging.js';
 
 // Toda consulta roda em withUserContext: a RLS decide o que o usuário vê.
 // O filtro por workspace_id restringe ao workspace do header (owner/admin
@@ -48,6 +52,7 @@ export class ContactsService {
       ];
       if (input.type) where.push(eq(contacts.type, input.type));
       if (input.companyId) where.push(eq(contacts.companyId, input.companyId));
+      if (input.tag) where.push(hasTag(tx, 'contact', contacts.id, input.tag));
       if (input.cursor) where.push(afterCursor(contacts.createdAt, contacts.id, decodeCursor(input.cursor)));
       if (input.q) where.push(searchCondition(tx, input.q));
 
@@ -63,9 +68,10 @@ export class ContactsService {
         rows.map((r) => ({ ...r.contact, companyName: r.companyName })),
         input.limit,
       );
-      const identities = await identitiesOf(tx, items.map((c) => c.id));
+      const ids = items.map((c) => c.id);
+      const [identities, tagMap] = await Promise.all([identitiesOf(tx, ids), tagsOf(tx, 'contact', ids)]);
       return {
-        items: items.map((c) => ({ ...c, identities: identities.get(c.id) ?? [] })),
+        items: items.map((c) => ({ ...c, identities: identities.get(c.id) ?? [], tags: tagMap.get(c.id) ?? [] })),
         nextCursor,
       };
     });
@@ -78,6 +84,7 @@ export class ContactsService {
   create(user: JwtClaims, ws: WorkspaceContext, input: CreateContactInput) {
     return withUserContext(this.db, user, async (tx) => {
       await assertIdentitiesFree(tx, ws, input.identities);
+      const custom = applyCustomFields(await fieldsOf(tx, ws, 'contact'), input.custom ?? {});
       const [contact] = await insertRows(tx, contacts, {
         tenantId: ws.tenantId,
         workspaceId: ws.id,
@@ -86,6 +93,7 @@ export class ContactsService {
         companyId: input.companyId ?? undefined,
         ownerId: input.ownerId ?? undefined,
         lgpdStatus: input.lgpdStatus,
+        custom,
       });
 
       const primaryTaken = new Set<string>();
@@ -108,13 +116,27 @@ export class ContactsService {
 
   update(user: JwtClaims, ws: WorkspaceContext, id: string, input: UpdateContactInput) {
     return withUserContext(this.db, user, async (tx) => {
+      // custom chega como alteração parcial e é mesclado ao que já existe
+      const custom =
+        input.custom === undefined
+          ? undefined
+          : applyCustomFields(await fieldsOf(tx, ws, 'contact'), input.custom, (await findContact(tx, ws, id)).custom);
       await updateOrFail(tx, ws, id, {
         name: input.name,
         type: input.type,
         companyId: input.companyId,
         ownerId: input.ownerId,
         lgpdStatus: input.lgpdStatus,
+        custom,
       });
+      return findContact(tx, ws, id);
+    });
+  }
+
+  setTags(user: JwtClaims, ws: WorkspaceContext, id: string, input: SetTagsInput) {
+    return withUserContext(this.db, user, async (tx) => {
+      await findContact(tx, ws, id);
+      await replaceTags(tx, ws, 'contact', id, input.tagIds);
       return findContact(tx, ws, id);
     });
   }
@@ -194,8 +216,13 @@ async function findContact(tx: Transaction, ws: WorkspaceContext, id: string) {
     .leftJoin(companies, eq(companies.id, contacts.companyId))
     .where(and(eq(contacts.workspaceId, ws.id), eq(contacts.id, id)));
   if (!row) throw new NotFoundException('Contato não encontrado');
-  const identities = await identitiesOf(tx, [id]);
-  return { ...row.contact, company: row.company?.id ? row.company : null, identities: identities.get(id) ?? [] };
+  const [identities, tagMap] = await Promise.all([identitiesOf(tx, [id]), tagsOf(tx, 'contact', [id])]);
+  return {
+    ...row.contact,
+    company: row.company?.id ? row.company : null,
+    identities: identities.get(id) ?? [],
+    tags: tagMap.get(id) ?? [],
+  };
 }
 
 async function identitiesOf(tx: Transaction, contactIds: string[]) {

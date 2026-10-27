@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CustomFieldInputs, TagChips } from "@/components/crm";
 import { Button, Card, Input, Notice } from "@/components/ui";
-import { ApiError, type Company } from "@/lib/api";
+import { ApiError, type Company, type CustomFieldDef, type TagSummary } from "@/lib/api";
 import { CONTACT_TYPES, formatCnpj, formatIdentifier } from "@/lib/labels";
 import { canDelete, canEdit, requireWorkspace, workspaceApi } from "@/lib/session";
-import { deleteCompany, setCompanyArchived, updateCompany } from "../actions";
+import { deleteCompany, setCompanyArchived, setCompanyTags, updateCompany } from "../actions";
 
 export default async function CompanyPage({ params, searchParams }: PageProps<"/companies/[id]">) {
   const [{ id }, query, current] = await Promise.all([params, searchParams, requireWorkspace()]);
@@ -12,6 +13,10 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
     if (error instanceof ApiError && (error.status === 404 || error.status === 400)) notFound();
     throw error;
   });
+  const [tags, fields] = await Promise.all([
+    workspaceApi<TagSummary[]>("/tags"),
+    workspaceApi<CustomFieldDef[]>("/custom-fields?entity=company"),
+  ]);
   const editable = canEdit(current);
   const error = typeof query.error === "string" ? query.error : undefined;
 
@@ -22,6 +27,7 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
           ← Empresas
         </Link>
         <h1 className="text-xl font-semibold">{company.name}</h1>
+        <TagChips tags={company.tags} />
         {company.archivedAt && (
           <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
             Arquivada
@@ -51,6 +57,7 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
                 <span>Telefone</span>
                 <Input name="phone" defaultValue={company.phone ? formatIdentifier("phone", company.phone) : ""} />
               </label>
+              <CustomFieldInputs defs={fields} values={company.custom} />
               {editable && <Button>Salvar</Button>}
             </fieldset>
           </form>
@@ -72,6 +79,29 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
           </ul>
         </Card>
       </div>
+
+      {tags.length > 0 && (
+        <Card title="Tags">
+          <form action={setCompanyTags} className="flex flex-wrap items-center gap-3 text-sm">
+            <input type="hidden" name="id" value={company.id} />
+            <fieldset disabled={!editable} className="flex flex-wrap gap-3">
+              {tags.map((tag) => (
+                <label key={tag.id} className="inline-flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    name="tagIds"
+                    value={tag.id}
+                    defaultChecked={company.tags.some((t) => t.id === tag.id)}
+                  />
+                  <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tag.color }} />
+                  {tag.name}
+                </label>
+              ))}
+            </fieldset>
+            {editable && <Button variant="ghost">Salvar tags</Button>}
+          </form>
+        </Card>
+      )}
 
       {editable && (
         <div className="flex flex-wrap gap-2">

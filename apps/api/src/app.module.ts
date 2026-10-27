@@ -5,7 +5,8 @@ import { SupabaseJwtVerifier } from './auth/supabase-jwt.verifier.js';
 import { ENV, type Env } from './config.js';
 import { CompaniesService } from './crm/companies.service.js';
 import { ContactsService } from './crm/contacts.service.js';
-import { CompaniesController, ContactsController } from './crm/crm.controllers.js';
+import { CompaniesController, ContactsController, SettingsController } from './crm/crm.controllers.js';
+import { SettingsService } from './crm/settings.service.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthController } from './health.controller.js';
 import { TenancyController } from './tenancy/tenancy.controller.js';
@@ -19,7 +20,7 @@ export class AppModule {
       module: AppModule,
       global: true,
       imports: [DatabaseModule],
-      controllers: [HealthController, TenancyController, ContactsController, CompaniesController],
+      controllers: [HealthController, TenancyController, ContactsController, CompaniesController, SettingsController],
       providers: [
         { provide: ENV, useValue: env },
         {
@@ -30,6 +31,7 @@ export class AppModule {
         TenancyService,
         ContactsService,
         CompaniesService,
+        SettingsService,
         WorkspaceGuard,
       ],
       exports: [ENV],

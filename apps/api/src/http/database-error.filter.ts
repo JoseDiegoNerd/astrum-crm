@@ -22,6 +22,11 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   contacts_tenant_id_owner_id_fkey: 'O responsável precisa ser membro da conta',
   companies_tenant_id_owner_id_fkey: 'O responsável precisa ser membro da conta',
   contact_identities_workspace_id_contact_id_fkey: 'Contato não encontrado neste workspace',
+  tags_workspace_name_key: 'Já existe uma tag com este nome neste workspace',
+  contact_tags_workspace_id_tag_id_fkey: 'Tag não encontrada neste workspace',
+  company_tags_workspace_id_tag_id_fkey: 'Tag não encontrada neste workspace',
+  custom_field_defs_workspace_id_entity_key_key: 'Já existe um campo com esta chave',
+  custom_field_defs_options_check: 'Seleção exige opções; os demais tipos não usam opções',
 };
 
 interface PgError {

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CustomFieldInputs, TagChips } from "@/components/crm";
 import { Button, Card, Input, Notice, Select } from "@/components/ui";
-import { ApiError, type CompanySummary, type Contact, type Page } from "@/lib/api";
+import { ApiError, type CompanySummary, type Contact, type CustomFieldDef, type Page, type TagSummary } from "@/lib/api";
 import { CHANNELS, CONTACT_TYPES, formatIdentifier, LGPD } from "@/lib/labels";
 import { canDelete, canEdit, requireWorkspace, workspaceApi } from "@/lib/session";
 import {
@@ -10,6 +11,7 @@ import {
   makePrimaryIdentity,
   removeIdentity,
   setContactArchived,
+  setContactTags,
   updateContact,
 } from "../actions";
 
@@ -19,7 +21,11 @@ export default async function ContactPage({ params, searchParams }: PageProps<"/
     if (error instanceof ApiError && (error.status === 404 || error.status === 400)) notFound();
     throw error;
   });
-  const companies = await workspaceApi<Page<CompanySummary>>("/companies?limit=100");
+  const [companies, tags, fields] = await Promise.all([
+    workspaceApi<Page<CompanySummary>>("/companies?limit=100"),
+    workspaceApi<TagSummary[]>("/tags"),
+    workspaceApi<CustomFieldDef[]>("/custom-fields?entity=contact"),
+  ]);
   const editable = canEdit(current);
   const error = typeof query.error === "string" ? query.error : undefined;
 
@@ -33,6 +39,7 @@ export default async function ContactPage({ params, searchParams }: PageProps<"/
         <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-800">
           {CONTACT_TYPES[contact.type]}
         </span>
+        <TagChips tags={contact.tags} />
         {contact.archivedAt && (
           <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
             Arquivado
@@ -81,6 +88,7 @@ export default async function ContactPage({ params, searchParams }: PageProps<"/
                   ))}
                 </Select>
               </label>
+              <CustomFieldInputs defs={fields} values={contact.custom} />
               {editable && <Button>Salvar</Button>}
             </fieldset>
           </form>
@@ -130,6 +138,31 @@ export default async function ContactPage({ params, searchParams }: PageProps<"/
           )}
         </Card>
       </div>
+
+      <Card title="Tags">
+        {tags.length === 0 ? (
+          <p className="text-sm text-zinc-500">Nenhuma tag criada. Managers criam tags em Configurações.</p>
+        ) : (
+          <form action={setContactTags} className="flex flex-wrap items-center gap-3 text-sm">
+            <input type="hidden" name="id" value={contact.id} />
+            <fieldset disabled={!editable} className="flex flex-wrap gap-3">
+              {tags.map((tag) => (
+                <label key={tag.id} className="inline-flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    name="tagIds"
+                    value={tag.id}
+                    defaultChecked={contact.tags.some((t) => t.id === tag.id)}
+                  />
+                  <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tag.color }} />
+                  {tag.name}
+                </label>
+              ))}
+            </fieldset>
+            {editable && <Button variant="ghost">Salvar tags</Button>}
+          </form>
+        )}
+      </Card>
 
       {editable && (
         <div className="flex flex-wrap gap-2">

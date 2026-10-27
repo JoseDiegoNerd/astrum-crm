@@ -70,6 +70,8 @@ describeWorkspaceTable({
   update: { name: 'Ana S.' },      // uma alteração permitida
 });
 ```
+Opções: `writers: 'manager'` para configuração do workspace (tags, campos, pipelines — agent não escreve), `update` omitido para tabelas sem UPDATE (junções), `agentCanDelete: true` quando agent também remove, e `values` como função quando a linha depende de outra (ex.: `contact_tags` precisa de contato e tag no mesmo workspace — veja `crm-tags-fields.test.ts`).
+
 A suíte cobre: agent cria/edita, viewer só lê, member fora do workspace não vê, owner/admin veem tudo, outro tenant não lê/altera/apaga/insere, FK composta barra workspace alheio, linha não troca de tenant/workspace, só manager apaga, `created_by` não é forjável, anon bloqueado. Se a tabela depende de outra (ex.: `deals` exige pipeline), use `setup` para criar o pré-requisito ou acrescente testes próprios no mesmo arquivo para regras específicas.
 
 ### 8. Verifique
