@@ -1,7 +1,11 @@
 // Espelho tipado das tabelas para consultas via Drizzle.
 // A fonte da verdade do schema são as migrations em supabase/migrations/.
 import {
+  bigint,
   boolean,
+  char,
+  date,
+  doublePrecision,
   integer,
   jsonb,
   pgEnum,
@@ -189,6 +193,66 @@ export const customFieldDefs = pgTable('custom_field_defs', {
   position: integer('position').notNull().default(0),
   ...timestamps,
 });
+
+// --- F1.3 · Funil: pipelines, etapas e negócios ---------------------------------
+
+export const stageKind = pgEnum('stage_kind', ['open', 'won', 'lost']);
+export const dealStatus = pgEnum('deal_status', ['open', 'won', 'lost']);
+
+export const pipelines = pgTable('pipelines', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  name: text('name').notNull(),
+  isDefault: boolean('is_default').notNull().default(false),
+  position: integer('position').notNull().default(0),
+  ...timestamps,
+});
+
+export const pipelineStages = pgTable('pipeline_stages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  pipelineId: uuid('pipeline_id').notNull(),
+  name: text('name').notNull(),
+  position: integer('position').notNull().default(0),
+  probability: integer('probability').notNull().default(0),
+  kind: stageKind('kind').notNull().default('open'),
+  ...timestamps,
+});
+
+export const deals = pgTable('deals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  title: text('title').notNull(),
+  pipelineId: uuid('pipeline_id').notNull(),
+  stageId: uuid('stage_id').notNull(),
+  contactId: uuid('contact_id'),
+  companyId: uuid('company_id'),
+  ownerId: uuid('owner_id'),
+  valueCents: bigint('value_cents', { mode: 'number' }).notNull().default(0),
+  currency: char('currency', { length: 3 }).notNull().default('BRL'),
+  expectedCloseAt: date('expected_close_at'),
+  // derivados da etapa pelo banco; não enviar em insert/update
+  status: dealStatus('status').notNull().default('open'),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  lostReason: text('lost_reason'),
+  position: doublePrecision('position').notNull().default(0),
+  custom: jsonb('custom').$type<Record<string, unknown>>().notNull().default({}),
+  ...timestamps,
+});
+
+export const dealTags = pgTable('deal_tags', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  dealId: uuid('deal_id').notNull(),
+  tagId: uuid('tag_id').notNull(),
+  ...timestamps,
+});
+
+export type Pipeline = typeof pipelines.$inferSelect;
+export type PipelineStage = typeof pipelineStages.$inferSelect;
+export type Deal = typeof deals.$inferSelect;
+export type StageKind = (typeof stageKind.enumValues)[number];
+export type DealStatus = (typeof dealStatus.enumValues)[number];
 
 export type Tag = typeof tags.$inferSelect;
 export type CustomFieldDef = typeof customFieldDefs.$inferSelect;

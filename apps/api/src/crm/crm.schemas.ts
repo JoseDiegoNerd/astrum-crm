@@ -1,4 +1,12 @@
-import { contactType, customFieldEntity, customFieldType, identityChannel, lgpdStatus } from '@astrum/db';
+import {
+  contactType,
+  customFieldEntity,
+  customFieldType,
+  dealStatus,
+  identityChannel,
+  lgpdStatus,
+  stageKind,
+} from '@astrum/db';
 import { z } from 'zod';
 import { normalizeCnpj } from './cnpj.js';
 import { InvalidIdentityError, normalizeIdentity, normalizePhone } from './identity.js';
@@ -158,6 +166,95 @@ export const updateFieldSchema = z
   .refine((v) => Object.values(v).some((x) => x !== undefined), 'Nada para alterar');
 
 export const listFieldsSchema = z.object({ entity: z.enum(customFieldEntity.enumValues).optional() });
+
+// --- Funil: pipelines, etapas e negócios ---
+
+const stageName = z.string().trim().min(1).max(80);
+const stageInput = z.object({
+  name: stageName,
+  kind: z.enum(stageKind.enumValues).default('open'),
+  probability: z.number().int().min(0).max(100).default(0),
+});
+
+export const createPipelineSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  stages: z.array(stageInput).min(1).max(30).optional(),
+});
+export const updatePipelineSchema = z
+  .object({ name: z.string().trim().min(1).max(80).optional(), isDefault: z.literal(true).optional() })
+  .refine((v) => v.name !== undefined || v.isDefault !== undefined, 'Nada para alterar');
+export const createStageSchema = stageInput;
+export const updateStageSchema = z
+  .object({
+    name: stageName.optional(),
+    kind: z.enum(stageKind.enumValues).optional(),
+    probability: z.number().int().min(0).max(100).optional(),
+  })
+  .refine((v) => Object.values(v).some((x) => x !== undefined), 'Nada para alterar');
+export const reorderStagesSchema = z.object({ stageIds: z.array(z.uuid()).min(1).max(30) });
+
+const valueCents = z.number().int().min(0).max(100_000_000_000_000);
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data no formato AAAA-MM-DD');
+
+export const createDealSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  pipelineId: z.uuid().optional(),
+  stageId: z.uuid().optional(),
+  contactId: optionalUuid,
+  companyId: optionalUuid,
+  ownerId: optionalUuid,
+  valueCents: valueCents.optional(),
+  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional(),
+  expectedCloseAt: isoDate.nullable().optional(),
+  custom,
+});
+
+export const updateDealSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    contactId: optionalUuid,
+    companyId: optionalUuid,
+    ownerId: optionalUuid,
+    valueCents: valueCents.optional(),
+    currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional(),
+    expectedCloseAt: isoDate.nullable().optional(),
+    lostReason: z.string().trim().max(500).nullable().optional(),
+    custom,
+  })
+  .refine((v) => Object.values(v).some((x) => x !== undefined), 'Nada para alterar');
+
+export const moveDealSchema = z.object({
+  stageId: z.uuid(),
+  /** Negócio que fica logo acima na coluna; null/ausente = topo da coluna. */
+  afterDealId: z.uuid().nullable().optional(),
+  lostReason: z.string().trim().max(500).optional(),
+});
+
+export const listDealsSchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  pipeline: z.uuid().optional(),
+  stage: z.uuid().optional(),
+  status: z.enum(dealStatus.enumValues).optional(),
+  owner: z.uuid().optional(),
+  contact: z.uuid().optional(),
+  company: z.uuid().optional(),
+  tag: z.uuid().optional(),
+  cursor: z.string().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+
+export const boardSchema = z.object({ pipeline: z.uuid().optional(), owner: z.uuid().optional() });
+
+export type CreatePipelineInput = z.infer<typeof createPipelineSchema>;
+export type UpdatePipelineInput = z.infer<typeof updatePipelineSchema>;
+export type CreateStageInput = z.infer<typeof createStageSchema>;
+export type UpdateStageInput = z.infer<typeof updateStageSchema>;
+export type ReorderStagesInput = z.infer<typeof reorderStagesSchema>;
+export type CreateDealInput = z.infer<typeof createDealSchema>;
+export type UpdateDealInput = z.infer<typeof updateDealSchema>;
+export type MoveDealInput = z.infer<typeof moveDealSchema>;
+export type ListDealsInput = z.infer<typeof listDealsSchema>;
+export type BoardInput = z.infer<typeof boardSchema>;
 
 export type CreateTagInput = z.infer<typeof createTagSchema>;
 export type UpdateTagInput = z.infer<typeof updateTagSchema>;

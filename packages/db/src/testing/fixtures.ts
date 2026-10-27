@@ -29,6 +29,42 @@ export const one = async <T>(q: Queryable, text: string, params?: unknown[]) =>
 export const ids = async (q: Queryable, text: string, params?: unknown[]) =>
   (await q.query<{ id: string }>(text, params)).map((r) => r.id).sort();
 
+/**
+ * Insere uma linha numa tabela de workspace como superusuário (pré-requisitos de
+ * testes). O tenant vem do próprio workspace, para a linha ser sempre válida.
+ */
+export async function insertInWorkspace(
+  db: Queryable,
+  workspaceId: string,
+  table: string,
+  columns: Record<string, unknown>,
+): Promise<string> {
+  const cols = Object.keys(columns);
+  const placeholders = cols.map((_, i) => `$${i + 2}`).join(', ');
+  const row = await one<{ id: string }>(
+    db,
+    `insert into ${table} (tenant_id, workspace_id, ${cols.join(', ')})
+     select tenant_id, id, ${placeholders} from workspaces where id = $1
+     returning id`,
+    [workspaceId, ...Object.values(columns)],
+  );
+  return row.id;
+}
+
+/** Pipeline padrão do workspace e suas etapas, na ordem. */
+export async function defaultPipeline(db: Queryable, workspaceId: string) {
+  const pipeline = await one<{ id: string }>(
+    db,
+    `select id from pipelines where workspace_id = $1 and is_default`,
+    [workspaceId],
+  );
+  const stages = await db.query<{ id: string; name: string; kind: string }>(
+    `select id, name, kind from pipeline_stages where pipeline_id = $1 order by position`,
+    [pipeline.id],
+  );
+  return { id: pipeline.id, stages };
+}
+
 export async function seedTenancy(db: TestDatabase): Promise<Tenancy> {
   const [alice, bob, carol, dave, vic, mia] = (await Promise.all(
     ['alice@a.test', 'bob@b.test', 'carol@a.test', 'dave@a.test', 'vic@a.test', 'mia@a.test'].map((e) =>

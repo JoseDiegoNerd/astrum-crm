@@ -2,7 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CustomFieldInputs, TagChips } from "@/components/crm";
 import { Button, Card, Input, Notice, Select } from "@/components/ui";
-import { ApiError, type CompanySummary, type Contact, type CustomFieldDef, type Page, type TagSummary } from "@/lib/api";
+import {
+  ApiError,
+  type CompanySummary,
+  type Contact,
+  type CustomFieldDef,
+  type DealSummary,
+  type Page,
+  type TagSummary,
+} from "@/lib/api";
+import { formatMoney } from "@/lib/money";
 import { CHANNELS, CONTACT_TYPES, formatIdentifier, LGPD } from "@/lib/labels";
 import { canDelete, canEdit, requireWorkspace, workspaceApi } from "@/lib/session";
 import {
@@ -21,10 +30,11 @@ export default async function ContactPage({ params, searchParams }: PageProps<"/
     if (error instanceof ApiError && (error.status === 404 || error.status === 400)) notFound();
     throw error;
   });
-  const [companies, tags, fields] = await Promise.all([
+  const [companies, tags, fields, relatedDeals] = await Promise.all([
     workspaceApi<Page<CompanySummary>>("/companies?limit=100"),
     workspaceApi<TagSummary[]>("/tags"),
     workspaceApi<CustomFieldDef[]>("/custom-fields?entity=contact"),
+    workspaceApi<Page<DealSummary>>(`/deals?contact=${id}&limit=20`),
   ]);
   const editable = canEdit(current);
   const error = typeof query.error === "string" ? query.error : undefined;
@@ -138,6 +148,27 @@ export default async function ContactPage({ params, searchParams }: PageProps<"/
           )}
         </Card>
       </div>
+
+      <Card title="Negócios">
+        <ul className="mb-3 divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
+          {relatedDeals.items.length === 0 && <li className="py-2 text-zinc-500">Nenhum negócio.</li>}
+          {relatedDeals.items.map((deal) => (
+            <li key={deal.id} className="flex justify-between gap-2 py-2">
+              <Link href={`/deals/${deal.id}`} className="hover:underline">
+                {deal.title}
+              </Link>
+              <span className="text-zinc-500">
+                {deal.stageName} · {formatMoney(deal.valueCents, deal.currency)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {editable && (
+          <Link href={`/deals?contact=${contact.id}`} className="text-sm text-indigo-600 hover:underline">
+            + Novo negócio
+          </Link>
+        )}
+      </Card>
 
       <Card title="Tags">
         {tags.length === 0 ? (

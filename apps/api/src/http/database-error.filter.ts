@@ -7,6 +7,8 @@ const PG_TO_HTTP: Record<string, { status: HttpStatus; message?: string }> = {
   P0002: { status: HttpStatus.NOT_FOUND },
   '23505': { status: HttpStatus.CONFLICT, message: 'Registro já existe' },
   '23503': { status: HttpStatus.UNPROCESSABLE_ENTITY, message: 'Referência inválida' },
+  // on delete restrict: ainda há registros dependentes
+  '23001': { status: HttpStatus.CONFLICT, message: 'Há registros que dependem deste' },
   '23514': { status: HttpStatus.UNPROCESSABLE_ENTITY },
   '22P02': { status: HttpStatus.BAD_REQUEST, message: 'Valor inválido' },
 };
@@ -27,12 +29,25 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   company_tags_workspace_id_tag_id_fkey: 'Tag não encontrada neste workspace',
   custom_field_defs_workspace_id_entity_key_key: 'Já existe um campo com esta chave',
   custom_field_defs_options_check: 'Seleção exige opções; os demais tipos não usam opções',
+  deal_tags_workspace_id_tag_id_fkey: 'Tag não encontrada neste workspace',
+  pipelines_one_default_key: 'Já existe um pipeline padrão neste workspace',
+  deals_pipeline_id_stage_id_fkey: 'A etapa não pertence ao pipeline do negócio, ou ainda tem negócios',
+  deals_workspace_id_pipeline_id_fkey: 'Pipeline não encontrado, ou ainda tem negócios',
+  deals_workspace_id_contact_id_fkey: 'Contato não encontrado neste workspace',
+  deals_workspace_id_company_id_fkey: 'Empresa não encontrada neste workspace',
+  deals_tenant_id_owner_id_fkey: 'O responsável precisa ser membro da conta',
+  // mesmas constraints, mas no caminho do delete bloqueado (código 23001)
+  '23001:deals_pipeline_id_stage_id_fkey': 'Esta etapa ainda tem negócios; mova-os antes de excluir',
+  '23001:deals_workspace_id_pipeline_id_fkey': 'Este pipeline ainda tem negócios; mova-os antes de excluir',
 };
 
 interface PgError {
   code: string;
   message: string;
+  /** postgres.js (produção) */
   constraint_name?: string;
+  /** PGlite (testes) */
+  constraint?: string;
 }
 
 export function findPgError(error: unknown): PgError | undefined {
@@ -50,7 +65,10 @@ export function toHttpException(error: unknown): HttpException | undefined {
   const pg = findPgError(error);
   if (!pg) return undefined;
   const mapped = PG_TO_HTTP[pg.code]!;
-  const byConstraint = pg.constraint_name ? CONSTRAINT_MESSAGES[pg.constraint_name] : undefined;
+  const constraint = pg.constraint_name ?? pg.constraint;
+  const byConstraint = constraint
+    ? (CONSTRAINT_MESSAGES[`${pg.code}:${constraint}`] ?? CONSTRAINT_MESSAGES[constraint])
+    : undefined;
   return new HttpException(byConstraint ?? mapped.message ?? pg.message, mapped.status);
 }
 

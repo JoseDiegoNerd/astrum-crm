@@ -76,6 +76,10 @@ export function describeWorkspaceTable(spec: WorkspaceTableSpec) {
     ]);
   const remove = (q: Queryable, id: string) =>
     q.query(`delete from public.${table} where id = $1 returning id`, [id]);
+  // Olha só as linhas criadas pelo teste: algumas tabelas já nascem com dados
+  // em todo workspace (ex.: pipeline padrão), que não interessam aqui.
+  const visible = (q: Queryable, rows: string[]) =>
+    ids(q, `select id from public.${table} where id = any($1::uuid[])`, [rows]);
 
   describe(`isolamento de ${table}`, () => {
     let t: Tenancy;
@@ -122,7 +126,7 @@ export function describeWorkspaceTable(spec: WorkspaceTableSpec) {
 
     it('viewer lê, mas não cria nem edita', async () => {
       await db.asUser(t.vic.id, async (q) => {
-        expect(await ids(q, `select id from public.${table}`)).toEqual([rowA1]);
+        expect(await visible(q, [rowA1, rowA2])).toEqual([rowA1]);
         if (updates) expect(await update(q, rowA1)).toHaveLength(0);
       });
       await expect(insertAs(t.vic.id, t.tenantA, t.a1)).rejects.toThrow(/row-level security/);
@@ -130,7 +134,7 @@ export function describeWorkspaceTable(spec: WorkspaceTableSpec) {
 
     it('member não vê nem escreve em workspace onde não está', async () => {
       await db.asUser(t.carol.id, async (q) => {
-        expect(await ids(q, `select id from public.${table}`)).toEqual([rowA1]);
+        expect(await visible(q, [rowA1, rowA2])).toEqual([rowA1]);
         if (updates) expect(await update(q, rowA2)).toHaveLength(0);
       });
       await expect(insertAs(t.carol.id, t.tenantA, t.a2)).rejects.toThrow(/row-level security/);
@@ -138,13 +142,13 @@ export function describeWorkspaceTable(spec: WorkspaceTableSpec) {
 
     it('owner e admin veem todos os workspaces do tenant', async () => {
       const both = [rowA1, rowA2].sort();
-      expect(await db.asUser(t.alice.id, (q) => ids(q, `select id from public.${table}`))).toEqual(both);
-      expect(await db.asUser(t.dave.id, (q) => ids(q, `select id from public.${table}`))).toEqual(both);
+      expect(await db.asUser(t.alice.id, (q) => visible(q, both))).toEqual(both);
+      expect(await db.asUser(t.dave.id, (q) => visible(q, both))).toEqual(both);
     });
 
     it('outro tenant não lê, não altera, não apaga e não insere', async () => {
       await db.asUser(t.bob.id, async (q) => {
-        expect(await q.query(`select 1 from public.${table}`)).toHaveLength(0);
+        expect(await visible(q, [rowA1, rowA2])).toHaveLength(0);
         if (updates) expect(await update(q, rowA1)).toHaveLength(0);
         expect(await remove(q, rowA1)).toHaveLength(0);
       });

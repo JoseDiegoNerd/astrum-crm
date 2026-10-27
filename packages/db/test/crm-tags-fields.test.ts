@@ -1,23 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { one, seedTenancy, type Tenancy } from '../src/testing/fixtures.js';
+import { insertInWorkspace, seedTenancy, type Tenancy } from '../src/testing/fixtures.js';
 import { createTestDatabase, type TestDatabase } from '../src/testing/harness.js';
 import { describeWorkspaceTable, type WorkspaceRef } from './workspace-table-suite.js';
 
 // Pré-requisitos criados como superusuário; o tenant vem do próprio workspace.
 let seq = 0;
-async function insertIn(db: TestDatabase, ws: WorkspaceRef, table: string, columns: Record<string, unknown>) {
-  const cols = Object.keys(columns);
-  const placeholders = cols.map((_, i) => `$${i + 2}`).join(', ');
-  return (
-    await one<{ id: string }>(
-      db,
-      `insert into ${table} (tenant_id, workspace_id, ${cols.join(', ')})
-       select tenant_id, id, ${placeholders} from workspaces where id = $1
-       returning id`,
-      [ws.workspaceId, ...Object.values(columns)],
-    )
-  ).id;
-}
+const insertIn = (db: TestDatabase, ws: WorkspaceRef, table: string, columns: Record<string, unknown>) =>
+  insertInWorkspace(db, ws.workspaceId, table, columns);
 
 describeWorkspaceTable({
   table: 'tags',

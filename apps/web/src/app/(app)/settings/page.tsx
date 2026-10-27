@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { Button, Card, Input, Notice, Select } from "@/components/ui";
 import type { CustomFieldDef, CustomFieldEntity, CustomFieldType, Tag } from "@/lib/api";
 import { canDelete, requireWorkspace, workspaceApi } from "@/lib/session";
 import { createField, createTag, deleteField, deleteTag, updateField, updateTag } from "./actions";
 
-const ENTITIES: Partial<Record<CustomFieldEntity, string>> = { contact: "Contatos", company: "Empresas" };
+const ENTITIES: Record<CustomFieldEntity, string> = { contact: "Contatos", company: "Empresas", deal: "Negócios" };
 const TYPES: Record<CustomFieldType, string> = {
   text: "Texto",
   number: "Número",
@@ -30,6 +31,14 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         {!manage && <p className="text-sm text-zinc-500">Somente managers do workspace alteram estas configurações.</p>}
       </div>
       {typeof error === "string" && <Notice tone="error">{error}</Notice>}
+
+      <Link
+        href="/settings/funil"
+        className="block rounded-xl border border-zinc-200 p-4 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+      >
+        <span className="font-medium">Funil de vendas →</span>
+        <span className="block text-zinc-500">Pipelines, etapas, probabilidades e etapas de ganho/perda.</span>
+      </Link>
 
       <Card title="Tags">
         <ul className="mb-4 divide-y divide-zinc-200 text-sm dark:divide-zinc-800">

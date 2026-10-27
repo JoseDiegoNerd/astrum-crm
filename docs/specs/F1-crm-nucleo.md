@@ -1,6 +1,6 @@
 # F1 — Núcleo do CRM · Especificação
 
-> Status: **em andamento** — F1.1 e F1.2 implementadas (contatos, identidades, empresas, tags, campos customizados) · Data: 2026-10-27 · Depende de: F0
+> Status: **em andamento** — F1.1 a F1.3 implementadas (contatos, empresas, tags, campos customizados, funil e kanban) · Data: 2026-10-27 · Depende de: F0
 > Toda tabela desta fase segue a skill `.claude/skills/astrum-nova-tabela`.
 
 ## 1. Objetivo
@@ -42,6 +42,8 @@ deals              title, pipeline_id, stage_id, contact_id, company_id, owner_i
 - Mover para etapa `won`/`lost` preenche `status` e `closed_at` (trigger); voltar para `open` limpa.
 - `stage_id` precisa pertencer ao `pipeline_id` do negócio (FK composta `(pipeline_id, stage_id)`).
 - Pipelines e etapas: só **manager** cria/edita/apaga. Etapa com negócios não pode ser apagada (mover antes).
+- Negócios também recebem tags (`deal_tags`) e campos customizados (entidade `deal`).
+- Limitação conhecida: mudar o *tipo* de uma etapa (ex.: aberta → ganho) não recalcula o status dos negócios que já estão nela; vale a partir do próximo movimento.
 
 ### 2.3 Trabalho do dia a dia
 ```
@@ -107,7 +109,7 @@ Cada fatia passa por: banco (skill `astrum-nova-tabela`) → API → tela → te
 |---|---|---|
 | **F1.1** ✅ | contacts, contact_identities, companies + telas Contatos / Ficha / Empresas | contato com 2 identidades criado pela tela; identidade duplicada no workspace recusada com 409; outro workspace não vê |
 | **F1.2** ✅ | tags, junções, custom_field_defs | filtro por tag funciona; campo custom obrigatório bloqueia salvar sem valor |
-| **F1.3** | pipelines, stages, deals, pipeline padrão + kanban | workspace novo já tem "Vendas"; arrastar para "Ganho" marca won e `closed_at` |
+| **F1.3** ✅ | pipelines, stages, deals, pipeline padrão + kanban | workspace novo já tem "Vendas"; arrastar para "Ganho" marca won e `closed_at` |
 | **F1.4** | tasks, notes + Minhas tarefas | tarefa atrasada aparece em "atrasadas"; agent não edita nota de outro |
 | **F1.5** | activities + triggers + linha do tempo | criar contato, mover negócio e concluir tarefa aparecem na ficha, em ordem |
 | **F1.6** | busca (pg_trgm) + importação CSV | busca por trecho de nome/telefone < 300 ms com 50 mil contatos; CSV de 5 mil linhas importa sem duplicar identidades |

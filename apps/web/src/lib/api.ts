@@ -166,3 +166,63 @@ export interface CustomFieldDef {
 }
 
 export type CustomValues = Record<string, unknown>;
+
+// --- Funil ---
+
+export type StageKind = "open" | "won" | "lost";
+export type DealStatus = StageKind;
+
+export interface PipelineStage {
+  id: string;
+  pipelineId: string;
+  name: string;
+  position: number;
+  probability: number;
+  kind: StageKind;
+}
+
+export interface Pipeline {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  position: number;
+  stages: PipelineStage[];
+}
+
+export interface DealSummary {
+  id: string;
+  title: string;
+  pipelineId: string;
+  stageId: string;
+  stageName: string;
+  status: DealStatus;
+  valueCents: number;
+  currency: string;
+  expectedCloseAt: string | null;
+  closedAt: string | null;
+  lostReason: string | null;
+  contactId: string | null;
+  contactName: string | null;
+  companyId: string | null;
+  companyName: string | null;
+  ownerId: string | null;
+  position: number;
+  createdAt: string;
+  tags: TagSummary[];
+}
+
+export interface Deal extends DealSummary {
+  custom: CustomValues;
+}
+
+export interface BoardColumn extends PipelineStage {
+  count: number;
+  totalCents: number;
+  deals: DealSummary[];
+}
+
+export interface Board {
+  pipelines: { id: string; name: string; isDefault: boolean }[];
+  pipeline: { id: string; name: string };
+  columns: BoardColumn[];
+}

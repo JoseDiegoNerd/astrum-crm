@@ -17,6 +17,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
 }
 
 const NAV = [
+  { href: "/deals", label: "Negócios" },
   { href: "/contacts", label: "Contatos" },
   { href: "/companies", label: "Empresas" },
   { href: "/team", label: "Equipe" },

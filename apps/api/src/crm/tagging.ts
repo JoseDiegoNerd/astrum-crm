@@ -4,6 +4,7 @@ import {
   asc,
   companyTags,
   contactTags,
+  dealTags,
   eq,
   exists,
   inArray,
@@ -17,10 +18,11 @@ import {
 } from '@astrum/db';
 import type { WorkspaceContext } from '../http/request.js';
 
-// contact_tags e company_tags têm o mesmo formato; muda só a coluna do "dono".
+// contact_tags, company_tags e deal_tags têm o mesmo formato; muda só a coluna do "dono".
 const JUNCTIONS = {
   contact: { table: contactTags, owner: contactTags.contactId },
   company: { table: companyTags, owner: companyTags.companyId },
+  deal: { table: dealTags, owner: dealTags.dealId },
 } as const;
 
 export type TaggedEntity = keyof typeof JUNCTIONS;
@@ -86,6 +88,7 @@ export async function replaceTags(
     // FK (workspace_id, tag_id) recusa tag de outro workspace → 422 pelo filtro de erros
     const base = { tenantId: ws.tenantId, workspaceId: ws.id, tagId };
     if (entity === 'contact') await insertRows(tx, contactTags, { ...base, contactId: ownerId });
-    else await insertRows(tx, companyTags, { ...base, companyId: ownerId });
+    else if (entity === 'company') await insertRows(tx, companyTags, { ...base, companyId: ownerId });
+    else await insertRows(tx, dealTags, { ...base, dealId: ownerId });
   }
 }

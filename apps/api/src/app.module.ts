@@ -6,6 +6,9 @@ import { ENV, type Env } from './config.js';
 import { CompaniesService } from './crm/companies.service.js';
 import { ContactsService } from './crm/contacts.service.js';
 import { CompaniesController, ContactsController, SettingsController } from './crm/crm.controllers.js';
+import { DealsController, PipelinesController } from './crm/deals.controllers.js';
+import { DealsService } from './crm/deals.service.js';
+import { PipelinesService } from './crm/pipelines.service.js';
 import { SettingsService } from './crm/settings.service.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthController } from './health.controller.js';
@@ -20,7 +23,15 @@ export class AppModule {
       module: AppModule,
       global: true,
       imports: [DatabaseModule],
-      controllers: [HealthController, TenancyController, ContactsController, CompaniesController, SettingsController],
+      controllers: [
+        HealthController,
+        TenancyController,
+        ContactsController,
+        CompaniesController,
+        SettingsController,
+        DealsController,
+        PipelinesController,
+      ],
       providers: [
         { provide: ENV, useValue: env },
         {
@@ -32,6 +43,8 @@ export class AppModule {
         ContactsService,
         CompaniesService,
         SettingsService,
+        DealsService,
+        PipelinesService,
         WorkspaceGuard,
       ],
       exports: [ENV],
