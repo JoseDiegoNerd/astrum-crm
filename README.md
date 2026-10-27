@@ -1,6 +1,11 @@
 # Astrum CRM
 
-CRM SaaS multi-tenant e omnichannel. Arquitetura e decisões: [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+CRM SaaS multi-tenant e omnichannel.
+
+- Arquitetura e decisões: [docs/ARQUITETURA.md](docs/ARQUITETURA.md)
+- Especificação da fase atual: [docs/specs/F1-crm-nucleo.md](docs/specs/F1-crm-nucleo.md)
+- Pendências que dependem do dono do projeto: [docs/PASSO-A-PASSO.md](docs/PASSO-A-PASSO.md)
+- Criar tabela nova: skill [`.claude/skills/astrum-nova-tabela`](.claude/skills/astrum-nova-tabela/SKILL.md) + template [`packages/db/templates/workspace-table.sql`](packages/db/templates/workspace-table.sql)
 
 ## Estrutura
 

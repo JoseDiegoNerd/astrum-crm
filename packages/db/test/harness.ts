@@ -16,6 +16,8 @@ export interface TestDatabase extends Queryable {
   asUser<T>(userId: string, fn: (db: Queryable) => Promise<T>): Promise<T>;
   /** Executa `fn` com o papel anon (sem login). */
   asAnon<T>(fn: (db: Queryable) => Promise<T>): Promise<T>;
+  /** Executa um script SQL com vários comandos, como superusuário. */
+  exec(sql: string): Promise<void>;
   createUser(email: string, name?: string): Promise<TestUser>;
   close(): Promise<void>;
 }
@@ -60,6 +62,9 @@ async function startPglite(): Promise<TestDatabase> {
     ...wrap(pg),
     asUser: (userId, fn) => as('authenticated', { sub: userId, role: 'authenticated' }, fn),
     asAnon: (fn) => as('anon', { role: 'anon' }, fn),
+    exec: async (text) => {
+      await pg.exec(text);
+    },
     createUser: (email, name) => insertUser(wrap(pg), email, name),
     close: () => pg.close(),
   };
@@ -83,6 +88,9 @@ async function connectPostgres(url: string): Promise<TestDatabase> {
     ...wrap(sql),
     asUser: (userId, fn) => as('authenticated', { sub: userId, role: 'authenticated' }, fn),
     asAnon: (fn) => as('anon', { role: 'anon' }, fn),
+    exec: async (text) => {
+      await sql.unsafe(text);
+    },
     createUser: (email, name) => insertUser(wrap(sql), email, name),
     close: () => sql.end(),
   };

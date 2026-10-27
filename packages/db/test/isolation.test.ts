@@ -1,46 +1,20 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createTestDatabase, type Queryable, type TestDatabase, type TestUser } from './harness.js';
+import { ids, one, seedTenancy, type Tenancy } from './fixtures.js';
+import { createTestDatabase, type TestDatabase, type TestUser } from './harness.js';
 
-// Cenário:
-//   Tenant A (alice owner, dave admin, carol member)
-//     ├─ workspace A1 "Principal"  ← carol é agent aqui
-//     └─ workspace A2 "Filial"
-//   Tenant B (bob owner)
-//     └─ workspace B1 "Principal"
+// Cenário em fixtures.ts (tenant A com A1/A2, tenant B com B1).
 
 let db: TestDatabase;
 let alice: TestUser, bob: TestUser, carol: TestUser, dave: TestUser;
 let tenantA: string, tenantB: string;
 let a1: string, a2: string, b1: string;
 
-const one = async <T>(q: Queryable, text: string, params?: unknown[]) => (await q.query<T>(text, params))[0]!;
-const ids = async (q: Queryable, text: string, params?: unknown[]) =>
-  (await q.query<{ id: string }>(text, params)).map((r) => r.id).sort();
 const sorted = (...values: string[]) => [...values].sort();
 
 beforeAll(async () => {
   db = await createTestDatabase();
-  [alice, bob, carol, dave] = await Promise.all(
-    ['alice@a.test', 'bob@b.test', 'carol@a.test', 'dave@a.test'].map((e) => db.createUser(e)),
-  ) as [TestUser, TestUser, TestUser, TestUser];
-
-  tenantA = await db.asUser(alice.id, async (q) =>
-    (await one<{ id: string }>(q, `select id from private.create_tenant('Empresa A')`)).id);
-  tenantB = await db.asUser(bob.id, async (q) =>
-    (await one<{ id: string }>(q, `select id from private.create_tenant('Empresa B')`)).id);
-
-  await db.asUser(alice.id, async (q) => {
-    a1 = (await one<{ id: string }>(q, `select id from workspaces where tenant_id = $1`, [tenantA])).id;
-    a2 = (await one<{ id: string }>(q,
-      `insert into workspaces (tenant_id, name) values ($1, 'Filial') returning id`, [tenantA])).id;
-    await q.query(`select private.add_tenant_member_by_email($1, $2, 'member')`, [tenantA, carol.email]);
-    await q.query(`select private.add_tenant_member_by_email($1, $2, 'admin')`, [tenantA, dave.email]);
-    await q.query(
-      `insert into workspace_members (tenant_id, workspace_id, user_id, role) values ($1, $2, $3, 'agent')`,
-      [tenantA, a1, carol.id]);
-  });
-  b1 = await db.asUser(bob.id, async (q) =>
-    (await one<{ id: string }>(q, `select id from workspaces where tenant_id = $1`, [tenantB])).id);
+  const t: Tenancy = await seedTenancy(db);
+  ({ alice, bob, carol, dave, tenantA, tenantB, a1, a2, b1 } = t);
 });
 
 afterAll(async () => {
