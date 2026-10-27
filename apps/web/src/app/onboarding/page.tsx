@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { createTenant } from "@/app/actions";
+import { createTenant } from "@/app/(app)/team/actions";
 import { Button, Input, Notice } from "@/components/ui";
 
 export default function OnboardingPage({ searchParams }: PageProps<"/onboarding">) {

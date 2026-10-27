@@ -52,6 +52,9 @@ export interface Workspace {
   tenantId: string;
   name: string;
   slug: string;
+  timezone: string;
+  /** Papel efetivo do usuário (owner/admin do tenant = manager). */
+  myRole: WorkspaceRole;
 }
 
 export interface MeResponse {
@@ -72,4 +75,61 @@ export interface WorkspaceMember {
   role: WorkspaceRole;
   name: string | null;
   email: string | null;
+}
+
+// --- CRM (espelham apps/api/src/crm) ---
+
+export type ContactType = "lead" | "customer" | "other";
+export type LgpdStatus = "unknown" | "consented" | "opted_out";
+export type IdentityChannel = "phone" | "whatsapp" | "email" | "instagram" | "messenger" | "telegram" | "other";
+
+export interface Page<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+export interface ContactIdentity {
+  id: string;
+  channel: IdentityChannel;
+  identifier: string;
+  isPrimary: boolean;
+  verified: boolean;
+}
+
+export interface ContactSummary {
+  id: string;
+  name: string;
+  type: ContactType;
+  companyId: string | null;
+  companyName: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  identities: ContactIdentity[];
+}
+
+export interface Contact {
+  id: string;
+  name: string;
+  type: ContactType;
+  lgpdStatus: LgpdStatus;
+  ownerId: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  company: { id: string; name: string } | null;
+  identities: ContactIdentity[];
+}
+
+export interface CompanySummary {
+  id: string;
+  name: string;
+  document: string | null;
+  domain: string | null;
+  phone: string | null;
+  archivedAt: string | null;
+  contactCount: number;
+}
+
+export interface Company extends CompanySummary {
+  ownerId: string | null;
+  contacts: { id: string; name: string; type: ContactType }[];
 }

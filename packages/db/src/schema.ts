@@ -1,6 +1,7 @@
 // Espelho tipado das tabelas para consultas via Drizzle.
 // A fonte da verdade do schema são as migrations em supabase/migrations/.
 import {
+  boolean,
   jsonb,
   pgEnum,
   pgTable,
@@ -79,6 +80,72 @@ export const workspaceMembers = pgTable(
   },
   (t) => [unique().on(t.workspaceId, t.userId)],
 );
+
+// --- F1.1 · CRM: contatos, identidades e empresas -----------------------------
+
+export const contactType = pgEnum('contact_type', ['lead', 'customer', 'other']);
+export const lgpdStatus = pgEnum('lgpd_status', ['unknown', 'consented', 'opted_out']);
+export const identityChannel = pgEnum('identity_channel', [
+  'phone',
+  'whatsapp',
+  'email',
+  'instagram',
+  'messenger',
+  'telegram',
+  'other',
+]);
+
+const workspaceScoped = {
+  tenantId: uuid('tenant_id').notNull(),
+  workspaceId: uuid('workspace_id').notNull(),
+  // preenchido pelo banco (auth.uid()); não enviar em insert
+  createdBy: uuid('created_by'),
+};
+
+export const companies = pgTable('companies', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  name: text('name').notNull(),
+  document: text('document'),
+  domain: text('domain'),
+  phone: text('phone'),
+  ownerId: uuid('owner_id'),
+  custom: jsonb('custom').$type<Record<string, unknown>>().notNull().default({}),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  ...timestamps,
+});
+
+export const contacts = pgTable('contacts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  name: text('name').notNull(),
+  type: contactType('type').notNull().default('lead'),
+  companyId: uuid('company_id'),
+  ownerId: uuid('owner_id'),
+  avatarUrl: text('avatar_url'),
+  custom: jsonb('custom').$type<Record<string, unknown>>().notNull().default({}),
+  lgpdStatus: lgpdStatus('lgpd_status').notNull().default('unknown'),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  ...timestamps,
+});
+
+export const contactIdentities = pgTable('contact_identities', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  contactId: uuid('contact_id').notNull(),
+  channel: identityChannel('channel').notNull(),
+  identifier: text('identifier').notNull(),
+  isPrimary: boolean('is_primary').notNull().default(false),
+  verified: boolean('verified').notNull().default(false),
+  ...timestamps,
+});
+
+export type ContactType = (typeof contactType.enumValues)[number];
+export type LgpdStatus = (typeof lgpdStatus.enumValues)[number];
+export type IdentityChannel = (typeof identityChannel.enumValues)[number];
+export type Company = typeof companies.$inferSelect;
+export type Contact = typeof contacts.$inferSelect;
+export type ContactIdentity = typeof contactIdentities.$inferSelect;
 
 export type TenantRole = (typeof tenantRole.enumValues)[number];
 export type WorkspaceRole = (typeof workspaceRole.enumValues)[number];

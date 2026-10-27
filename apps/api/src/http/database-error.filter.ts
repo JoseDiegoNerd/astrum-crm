@@ -11,9 +11,23 @@ const PG_TO_HTTP: Record<string, { status: HttpStatus; message?: string }> = {
   '22P02': { status: HttpStatus.BAD_REQUEST, message: 'Valor inválido' },
 };
 
+// Mensagens específicas por constraint (nomes vêm das migrations).
+const CONSTRAINT_MESSAGES: Record<string, string> = {
+  contact_identities_workspace_id_channel_identifier_key:
+    'Já existe um contato com este identificador neste workspace',
+  contact_identities_one_primary_key: 'O contato já tem uma identidade principal neste canal',
+  contact_identities_identifier_format: 'Identificador em formato inválido',
+  companies_workspace_document_key: 'Já existe uma empresa com este CNPJ neste workspace',
+  contacts_workspace_id_company_id_fkey: 'Empresa não encontrada neste workspace',
+  contacts_tenant_id_owner_id_fkey: 'O responsável precisa ser membro da conta',
+  companies_tenant_id_owner_id_fkey: 'O responsável precisa ser membro da conta',
+  contact_identities_workspace_id_contact_id_fkey: 'Contato não encontrado neste workspace',
+};
+
 interface PgError {
   code: string;
   message: string;
+  constraint_name?: string;
 }
 
 export function findPgError(error: unknown): PgError | undefined {
@@ -31,7 +45,8 @@ export function toHttpException(error: unknown): HttpException | undefined {
   const pg = findPgError(error);
   if (!pg) return undefined;
   const mapped = PG_TO_HTTP[pg.code]!;
-  return new HttpException(mapped.message ?? pg.message, mapped.status);
+  const byConstraint = pg.constraint_name ? CONSTRAINT_MESSAGES[pg.constraint_name] : undefined;
+  return new HttpException(byConstraint ?? mapped.message ?? pg.message, mapped.status);
 }
 
 @Catch()

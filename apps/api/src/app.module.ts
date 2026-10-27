@@ -3,6 +3,9 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth/auth.guard.js';
 import { SupabaseJwtVerifier } from './auth/supabase-jwt.verifier.js';
 import { ENV, type Env } from './config.js';
+import { CompaniesService } from './crm/companies.service.js';
+import { ContactsService } from './crm/contacts.service.js';
+import { CompaniesController, ContactsController } from './crm/crm.controllers.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthController } from './health.controller.js';
 import { TenancyController } from './tenancy/tenancy.controller.js';
@@ -16,7 +19,7 @@ export class AppModule {
       module: AppModule,
       global: true,
       imports: [DatabaseModule],
-      controllers: [HealthController, TenancyController],
+      controllers: [HealthController, TenancyController, ContactsController, CompaniesController],
       providers: [
         { provide: ENV, useValue: env },
         {
@@ -25,6 +28,8 @@ export class AppModule {
         },
         { provide: APP_GUARD, useClass: AuthGuard },
         TenancyService,
+        ContactsService,
+        CompaniesService,
         WorkspaceGuard,
       ],
       exports: [ENV],

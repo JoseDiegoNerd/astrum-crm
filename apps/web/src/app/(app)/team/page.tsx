@@ -1,42 +1,15 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { Suspense } from "react";
 import {
   addTenantMember,
   addWorkspaceMember,
   createWorkspace,
   removeWorkspaceMember,
-  selectWorkspace,
-} from "@/app/actions";
-import { signOut } from "@/app/login/actions";
+} from "./actions";
 import { Button, Card, Input, Notice, Select } from "@/components/ui";
-import { api, type MeResponse, type TenantMember, type WorkspaceMember } from "@/lib/api";
-import { resolveWorkspace, WORKSPACE_COOKIE } from "@/lib/workspace";
+import { api, type TenantMember, type WorkspaceMember } from "@/lib/api";
+import { requireWorkspace } from "@/lib/session";
 
-export default function HomePage({ searchParams }: PageProps<"/">) {
-  return (
-    <Suspense fallback={<p className="p-6 text-sm text-zinc-500">Carregando…</p>}>
-      <Dashboard searchParams={searchParams} />
-    </Suspense>
-  );
-}
-
-async function Dashboard({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
-  const [{ error }, cookieStore, me] = await Promise.all([
-    searchParams,
-    cookies(),
-    api<MeResponse>("/me"),
-  ]);
-  if (me.tenants.length === 0) redirect("/onboarding");
-
-  const current = resolveWorkspace(me, cookieStore.get(WORKSPACE_COOKIE)?.value);
-  if (!current) {
-    return (
-      <main className="p-6">
-        <Notice tone="info">Você ainda não foi incluído em nenhum workspace. Fale com o administrador da conta.</Notice>
-      </main>
-    );
-  }
+export default async function TeamPage({ searchParams }: PageProps<"/team">) {
+  const [{ error }, current] = await Promise.all([searchParams, requireWorkspace()]);
   const { tenant, workspace } = current;
   const isTenantAdmin = tenant.role === "owner" || tenant.role === "admin";
 
@@ -49,31 +22,7 @@ async function Dashboard({ searchParams }: Pick<PageProps<"/">, "searchParams">)
   );
 
   return (
-    <div className="flex flex-1 flex-col">
-      <header className="flex flex-wrap items-center gap-3 border-b border-zinc-200 px-6 py-3 dark:border-zinc-800">
-        <span className="font-semibold">Astrum</span>
-        <form action={selectWorkspace} className="flex items-center gap-2">
-          <Select name="workspaceId" defaultValue={workspace.id} aria-label="Workspace">
-            {me.tenants.map((t) => (
-              <optgroup key={t.id} label={t.name}>
-                {t.workspaces.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </Select>
-          <Button variant="ghost">Trocar</Button>
-        </form>
-        <span className="ml-auto text-sm text-zinc-500">
-          {me.profile?.name ?? me.profile?.email} · {tenant.name} ({tenant.role})
-        </span>
-        <form action={signOut}>
-          <Button variant="ghost">Sair</Button>
-        </form>
-      </header>
-
+    <>
       <main className="mx-auto grid w-full max-w-5xl gap-6 p-6 md:grid-cols-2">
         {typeof error === "string" && (
           <div className="md:col-span-2">
@@ -157,6 +106,6 @@ async function Dashboard({ searchParams }: Pick<PageProps<"/">, "searchParams">)
           </Card>
         )}
       </main>
-    </div>
+    </>
   );
 }

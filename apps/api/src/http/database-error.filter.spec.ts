@@ -25,6 +25,15 @@ describe('toHttpException', () => {
     expect(toHttpException(error)?.message).toBe('O tenant precisa de pelo menos um owner ativo');
   });
 
+  it('usa a mensagem da constraint quando conhecida', () => {
+    const error = Object.assign(pg('23505'), {
+      constraint_name: 'contact_identities_workspace_id_channel_identifier_key',
+    });
+    const http = toHttpException(error);
+    expect(http?.getStatus()).toBe(HttpStatus.CONFLICT);
+    expect(http?.message).toBe('Já existe um contato com este identificador neste workspace');
+  });
+
   it('ignora erros que não são do banco', () => {
     expect(toHttpException(new Error('boom'))).toBeUndefined();
   });

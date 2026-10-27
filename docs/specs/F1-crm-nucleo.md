@@ -1,6 +1,6 @@
 # F1 — Núcleo do CRM · Especificação
 
-> Status: **proposta** · Data: 2026-10-27 · Depende de: F0 (tenancy + RLS)
+> Status: **em andamento** — F1.1 implementada (contatos, identidades, empresas) · Data: 2026-10-27 · Depende de: F0
 > Toda tabela desta fase segue a skill `.claude/skills/astrum-nova-tabela`.
 
 ## 1. Objetivo
@@ -105,7 +105,7 @@ Cada fatia passa por: banco (skill `astrum-nova-tabela`) → API → tela → te
 
 | Fatia | Conteúdo | Pronto quando |
 |---|---|---|
-| **F1.1** | contacts, contact_identities, companies + telas Contatos / Ficha / Empresas | contato com 2 identidades criado pela tela; identidade duplicada no workspace recusada com 409; outro workspace não vê |
+| **F1.1** ✅ | contacts, contact_identities, companies + telas Contatos / Ficha / Empresas | contato com 2 identidades criado pela tela; identidade duplicada no workspace recusada com 409; outro workspace não vê |
 | **F1.2** | tags, junções, custom_field_defs | filtro por tag funciona; campo custom obrigatório bloqueia salvar sem valor |
 | **F1.3** | pipelines, stages, deals, pipeline padrão + kanban | workspace novo já tem "Vendas"; arrastar para "Ganho" marca won e `closed_at` |
 | **F1.4** | tasks, notes + Minhas tarefas | tarefa atrasada aparece em "atrasadas"; agent não edita nota de outro |

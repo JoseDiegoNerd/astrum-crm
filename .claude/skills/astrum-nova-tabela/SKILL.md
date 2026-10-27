@@ -55,6 +55,10 @@ Para isso a tabela referenciada precisa de `unique (workspace_id, id)`.
 ### 6. Espelhe no Drizzle
 Adicione a tabela em `packages/db/src/schema.ts` (mesmos nomes de coluna; tipos `$inferSelect` exportados). A migration é a fonte da verdade; o Drizzle só tipa as consultas.
 
+**Inserts na API: use `insertRows(tx, tabela, valores)`** de `@astrum/db`, não `tx.insert()`. O `insert` do Drizzle lista todas as colunas (as omitidas como `default`), e o Postgres exige privilégio em cada coluna listada — com os grants por coluna, ele falha com `permission denied`. `update().set()` e `select` do Drizzle funcionam normalmente. Para SQL cru com retorno, use `executeRows(tx, sql\`...\`)`.
+
+Teste os serviços da API contra o banco com `@astrum/db/testing` (`createTestDatabase`, `seedTenancy`, `testDb.drizzle()`), como em `apps/api/test/crm-services.e2e-spec.ts`.
+
 ### 7. Teste o isolamento (obrigatório)
 Crie `packages/db/test/<tabela>.test.ts`:
 ```ts

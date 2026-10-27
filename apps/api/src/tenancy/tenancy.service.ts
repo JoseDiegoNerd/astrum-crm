@@ -3,6 +3,7 @@ import {
   and,
   asc,
   eq,
+  executeRows,
   memberships,
   profiles,
   sql,
@@ -47,6 +48,11 @@ export class TenancyService {
         .select()
         .from(workspaces)
         .orderBy(asc(workspaces.name));
+      const myWorkspaceRoles = await tx
+        .select({ workspaceId: workspaceMembers.workspaceId, role: workspaceMembers.role })
+        .from(workspaceMembers)
+        .where(eq(workspaceMembers.userId, user.sub));
+      const roleIn = new Map(myWorkspaceRoles.map((r) => [r.workspaceId, r.role]));
 
       return {
         profile: profile ?? null,
@@ -55,7 +61,13 @@ export class TenancyService {
           name: a.tenantName,
           slug: a.tenantSlug,
           role: a.role,
-          workspaces: visibleWorkspaces.filter((w) => w.tenantId === a.tenantId),
+          workspaces: visibleWorkspaces
+            .filter((w) => w.tenantId === a.tenantId)
+            .map((w) => ({
+              ...w,
+              // owner/admin do tenant valem como manager em todo workspace (mesma regra da RLS)
+              myRole: a.role === 'owner' || a.role === 'admin' ? 'manager' : (roleIn.get(w.id) ?? 'viewer'),
+            })),
         })),
       };
     });
@@ -63,7 +75,8 @@ export class TenancyService {
 
   createTenant(user: JwtClaims, input: CreateTenantInput) {
     return withUserContext(this.db, user, async (tx) => {
-      const rows = await tx.execute<{ id: string; name: string; slug: string }>(
+      const rows = await executeRows<{ id: string; name: string; slug: string }>(
+        tx,
         sql`select id, name, slug from private.create_tenant(${input.name}, ${input.workspaceName ?? 'Principal'})`,
       );
       const tenant = rows[0]!;
@@ -94,7 +107,8 @@ export class TenancyService {
 
   addTenantMember(user: JwtClaims, tenantId: string, input: AddTenantMemberInput) {
     return withUserContext(this.db, user, async (tx) => {
-      const rows = await tx.execute<{ user_id: string; role: string }>(
+      const rows = await executeRows<{ user_id: string; role: string }>(
+        tx,
         sql`select user_id, role from private.add_tenant_member_by_email(
               ${tenantId}, ${input.email}, ${input.role}::public.tenant_role)`,
       );

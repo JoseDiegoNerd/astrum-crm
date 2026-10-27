@@ -2,10 +2,16 @@ import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
+import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
+import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import type { Database } from '../client.js';
+import * as schema from '../schema.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const migrationsDir = join(here, '../../../supabase/migrations');
+// mesmo caminho a partir de src/testing e de dist/testing
+const packageRoot = join(here, '../..');
+const migrationsDir = join(packageRoot, '../../supabase/migrations');
 
 export interface Queryable {
   query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<T[]>;
@@ -19,6 +25,8 @@ export interface TestDatabase extends Queryable {
   /** Executa um script SQL com vários comandos, como superusuário. */
   exec(sql: string): Promise<void>;
   createUser(email: string, name?: string): Promise<TestUser>;
+  /** Cliente Drizzle no mesmo banco, para testar serviços que usam withUserContext. */
+  drizzle(): Database;
   close(): Promise<void>;
 }
 
@@ -41,7 +49,7 @@ export async function createTestDatabase(): Promise<TestDatabase> {
 
 async function startPglite(): Promise<TestDatabase> {
   const pg = new PGlite();
-  await pg.exec(await readFile(join(here, 'supabase-stub.sql'), 'utf8'));
+  await pg.exec(await readFile(join(packageRoot, 'testing-assets/supabase-stub.sql'), 'utf8'));
   const files = (await readdir(migrationsDir)).filter((f) => f.endsWith('.sql')).sort();
   for (const file of files) {
     await pg.exec(await readFile(join(migrationsDir, file), 'utf8'));
@@ -66,6 +74,8 @@ async function startPglite(): Promise<TestDatabase> {
       await pg.exec(text);
     },
     createUser: (email, name) => insertUser(wrap(pg), email, name),
+    // drivers diferentes, mesma API de consultas e transações
+    drizzle: () => drizzlePglite(pg, { schema }) as unknown as Database,
     close: () => pg.close(),
   };
 }
@@ -92,6 +102,7 @@ async function connectPostgres(url: string): Promise<TestDatabase> {
       await sql.unsafe(text);
     },
     createUser: (email, name) => insertUser(wrap(sql), email, name),
+    drizzle: () => drizzlePostgres(sql, { schema }),
     close: () => sql.end(),
   };
 }

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ids, one, seedTenancy, type Tenancy } from './fixtures.js';
-import { createTestDatabase, type TestDatabase, type TestUser } from './harness.js';
+import { ids, one, seedTenancy, type Tenancy } from '../src/testing/fixtures.js';
+import { createTestDatabase, type TestDatabase, type TestUser } from '../src/testing/harness.js';
 
 // Cenário em fixtures.ts (tenant A com A1/A2, tenant B com B1).
 

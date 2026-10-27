@@ -8,14 +8,14 @@ import { WORKSPACE_COOKIE } from "@/lib/workspace";
 
 const field = (formData: FormData, name: string) => String(formData.get(name) ?? "").trim();
 
-async function run(action: () => Promise<unknown>, onSuccess = "/") {
+async function run(action: () => Promise<unknown>, onSuccess = "/team") {
   try {
     await action();
   } catch (error) {
     const message = error instanceof ApiError ? error.message : "Erro inesperado";
-    redirect(`/?error=${encodeURIComponent(message)}`);
+    redirect(`/team?error=${encodeURIComponent(message)}`);
   }
-  revalidatePath("/");
+  revalidatePath("/team");
   redirect(onSuccess);
 }
 
@@ -36,7 +36,7 @@ export async function createTenant(formData: FormData) {
 
 export async function selectWorkspace(formData: FormData) {
   (await cookies()).set(WORKSPACE_COOKIE, field(formData, "workspaceId"), { path: "/", sameSite: "lax" });
-  redirect("/");
+  redirect("/contacts");
 }
 
 export async function createWorkspace(formData: FormData) {
