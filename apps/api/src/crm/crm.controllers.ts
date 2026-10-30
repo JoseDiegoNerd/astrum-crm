@@ -22,6 +22,8 @@ import {
   createCompanySchema,
   createContactSchema,
   identityInputSchema,
+  importContactsSchema,
+  type ImportContactsInput,
   listCompaniesSchema,
   listContactsSchema,
   updateCompanySchema,
@@ -47,6 +49,7 @@ import {
   type UpdateCompanyInput,
   type UpdateContactInput,
 } from './crm.schemas.js';
+import { ImportService } from './import.service.js';
 import { SettingsService } from './settings.service.js';
 
 // Rotas de workspace: exigem o header X-Workspace-Id.
@@ -54,7 +57,21 @@ import { SettingsService } from './settings.service.js';
 @Controller('contacts')
 @UseGuards(WorkspaceGuard)
 export class ContactsController {
-  constructor(@Inject(ContactsService) private readonly contacts: ContactsService) {}
+  constructor(
+    @Inject(ContactsService) private readonly contacts: ContactsService,
+    @Inject(ImportService) private readonly importer: ImportService,
+  ) {}
+
+  /** Importa contatos de um CSV; devolve o relatório linha a linha. */
+  @Post('import')
+  @HttpCode(200)
+  import(
+    @CurrentUser() user: JwtClaims,
+    @CurrentWorkspace() ws: WorkspaceContext,
+    @Body(new ZodPipe(importContactsSchema)) body: ImportContactsInput,
+  ) {
+    return this.importer.importContacts(user, ws, body);
+  }
 
   @Get()
   list(

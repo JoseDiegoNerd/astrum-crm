@@ -309,6 +309,15 @@ export const listNotesSchema = z
   })
   .refine((v) => v.contact || v.deal || v.company, 'Filtre por contato, negócio ou empresa');
 
+export const importContactsSchema = z.object({
+  /** Conteúdo do arquivo CSV (até ~5 MB). */
+  csv: z.string().min(1).max(5_500_000),
+  /** O que fazer quando o telefone/e-mail/@ já é de um contato: pular ou completar o existente. */
+  mode: z.enum(['skip', 'merge']).default('skip'),
+});
+
+export type ImportContactsInput = z.infer<typeof importContactsSchema>;
+
 export const timelineSchema = z
   .object({
     contact: z.uuid().optional(),

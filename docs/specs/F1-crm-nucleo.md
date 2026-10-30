@@ -1,6 +1,6 @@
 # F1 — Núcleo do CRM · Especificação
 
-> Status: **em andamento** — F1.1 a F1.5 implementadas (falta F1.6: busca e importação CSV) · Data: 2026-10-27 · Depende de: F0
+> Status: **concluída** — F1.1 a F1.6 implementadas · Data: 2026-10-27 · Depende de: F0
 > Toda tabela desta fase segue a skill `.claude/skills/astrum-nova-tabela`.
 
 ## 1. Objetivo
@@ -113,7 +113,11 @@ Cada fatia passa por: banco (skill `astrum-nova-tabela`) → API → tela → te
 | **F1.3** ✅ | pipelines, stages, deals, pipeline padrão + kanban | workspace novo já tem "Vendas"; arrastar para "Ganho" marca won e `closed_at` |
 | **F1.4** ✅ | tasks, notes + Minhas tarefas | tarefa atrasada aparece em "atrasadas"; agent não edita nota de outro |
 | **F1.5** ✅ | activities + triggers + linha do tempo | criar contato, mover negócio e concluir tarefa aparecem na ficha, em ordem |
-| **F1.6** | busca (pg_trgm) + importação CSV | busca por trecho de nome/telefone < 300 ms com 50 mil contatos; CSV de 5 mil linhas importa sem duplicar identidades |
+| **F1.6** ✅ | busca (pg_trgm) + importação CSV | busca por trecho de nome/telefone < 300 ms com 50 mil contatos; CSV de 5 mil linhas importa sem duplicar identidades |
+
+## 6.1 Notas de implementação (F1.6)
+- **Busca sob RLS:** com RLS ativa o Postgres não usa índice para `ILIKE` (operador não *leakproof*) e varre a tabela — ~5 s com 50 mil contatos. A busca de contatos passa por `private.search_contact_ids()`, que confere o acesso ao workspace e busca pelos índices de trigramas: ~20 ms no mesmo volume (teste `crm-search.test.ts`). Empresas e negócios ainda usam `ILIKE` direto (volumes menores); migrar para o mesmo padrão se ficarem lentos.
+- **Importação:** CSV com `;`, `,` ou tab, UTF-8 ou Windows-1252, até 5.000 linhas. Cada linha roda em savepoint (erro não derruba as demais); duplicados por canal são pulados ou mesclados; empresas são criadas pelo nome; tags precisam existir. 1.000 linhas ≈ 5 s no PGlite.
 
 ## 7. Requisitos não funcionais
 - Toda tabela com `describeWorkspaceTable` + testes das regras específicas (ex.: só autor edita nota).

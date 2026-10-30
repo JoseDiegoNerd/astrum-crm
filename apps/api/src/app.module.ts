@@ -9,6 +9,7 @@ import { CompaniesController, ContactsController, SettingsController } from './c
 import { DealsController, PipelinesController } from './crm/deals.controllers.js';
 import { DealsService } from './crm/deals.service.js';
 import { PipelinesService } from './crm/pipelines.service.js';
+import { ImportService } from './crm/import.service.js';
 import { NotesService } from './crm/notes.service.js';
 import { SettingsService } from './crm/settings.service.js';
 import { TasksService } from './crm/tasks.service.js';
@@ -55,6 +56,7 @@ export class AppModule {
         TasksService,
         NotesService,
         TimelineService,
+        ImportService,
         WorkspaceGuard,
       ],
       exports: [ENV],

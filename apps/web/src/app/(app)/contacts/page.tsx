@@ -36,7 +36,14 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
     <main className="mx-auto grid w-full max-w-6xl gap-6 p-6 lg:grid-cols-[1fr_320px]">
       <section className="space-y-4">
         <div className="flex items-baseline justify-between">
-          <h1 className="text-xl font-semibold">Contatos</h1>
+          <h1 className="text-xl font-semibold">
+            Contatos
+            {canEdit(current) && (
+              <Link href="/contacts/import" className="ml-3 text-sm font-normal text-indigo-600 hover:underline">
+                Importar CSV
+              </Link>
+            )}
+          </h1>
           <span className="text-sm text-zinc-500">{current.workspace.name}</span>
         </div>
         {str("error") && <Notice tone="error">{str("error")}</Notice>}

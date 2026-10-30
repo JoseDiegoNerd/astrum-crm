@@ -7,6 +7,7 @@ create role authenticated nologin noinherit;
 create role service_role nologin noinherit bypassrls;
 
 create schema auth;
+create schema extensions;
 grant usage on schema auth to anon, authenticated, service_role;
 
 create table auth.users (

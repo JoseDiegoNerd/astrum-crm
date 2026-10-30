@@ -52,6 +52,9 @@ Para isso a tabela referenciada precisa de `unique (workspace_id, id)`.
 - Views sem `with (security_invoker = true)` — views ignoram RLS por padrão.
 - Consultar dados de negócio na API fora de `withUserContext`.
 
+### 5.1 Busca por trecho (ILIKE) em tabelas grandes
+Sob RLS o Postgres **não usa índice para `ILIKE`** (o operador não é *leakproof*) e varre a tabela inteira. Para busca em tabelas que podem crescer (contatos, conversas, mensagens): índice GIN `extensions.gin_trgm_ops` + função `private.search_<tabela>_ids(workspace_id, termo)` SECURITY DEFINER que confere `private.can_access_workspace` antes de buscar, e a consulta da API filtra `id in (select private.search_..._ids(...))` sob RLS. Modelo e teste de volume: `private.search_contact_ids` (migration `crm_search_indexes`) e `packages/db/test/crm-search.test.ts`.
+
 ### 6. Espelhe no Drizzle
 Adicione a tabela em `packages/db/src/schema.ts` (mesmos nomes de coluna; tipos `$inferSelect` exportados). A migration é a fonte da verdade; o Drizzle só tipa as consultas.
 

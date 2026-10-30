@@ -7,14 +7,11 @@ import {
   contacts,
   desc,
   eq,
-  exists,
-  ilike,
   inArray,
   insertRows,
   isNotNull,
   isNull,
   ne,
-  or,
   sql,
   withUserContext,
   type ContactIdentity,
@@ -33,7 +30,7 @@ import type {
   UpdateContactInput,
 } from './crm.schemas.js';
 import { applyCustomFields } from './custom-fields.js';
-import { afterCursor, decodeCursor, likePattern, page } from './pagination.js';
+import { afterCursor, decodeCursor, page } from './pagination.js';
 import { fieldsOf } from './settings.service.js';
 import { hasTag, replaceTags, tagsOf } from './tagging.js';
 
@@ -54,7 +51,7 @@ export class ContactsService {
       if (input.companyId) where.push(eq(contacts.companyId, input.companyId));
       if (input.tag) where.push(hasTag(tx, 'contact', contacts.id, input.tag));
       if (input.cursor) where.push(afterCursor(contacts.createdAt, contacts.id, decodeCursor(input.cursor)));
-      if (input.q) where.push(searchCondition(tx, input.q));
+      if (input.q) where.push(searchCondition(ws, input.q));
 
       const rows = await tx
         .select({ contact: contacts, companyName: companies.name })
@@ -240,20 +237,17 @@ async function identitiesOf(tx: Transaction, contactIds: string[]) {
 }
 
 /** Nome do contato ou qualquer identidade (telefone também casa só pelos dígitos). */
-function searchCondition(tx: Transaction, term: string): SQL {
+/**
+ * Nome do contato ou qualquer identidade (telefone também casa só pelos dígitos).
+ * Usa private.search_contact_ids: com RLS o Postgres não usa índice para ILIKE,
+ * então a função confere o acesso ao workspace e busca pelos índices de trigramas
+ * (ver migration crm_search_indexes). Esta consulta continua sob RLS.
+ */
+function searchCondition(ws: WorkspaceContext, term: string): SQL {
   const digits = term.replace(/\D/g, '');
-  const identityPattern = digits.length >= 4 && digits.length === term.replace(/[\s()+.-]/g, '').length
-    ? likePattern(digits)
-    : likePattern(term.toLowerCase().replace(/^@/, ''));
-  return or(
-    ilike(contacts.name, likePattern(term)),
-    exists(
-      tx
-        .select({ one: sql`1` })
-        .from(contactIdentities)
-        .where(and(eq(contactIdentities.contactId, contacts.id), ilike(contactIdentities.identifier, identityPattern))),
-    ),
-  )!;
+  const phoneLike = digits.length >= 4 && digits.length === term.replace(/[\s()+.-]/g, '').length;
+  const identifierTerm = phoneLike ? digits : term.toLowerCase().replace(/^@/, '');
+  return sql`${contacts.id} in (select private.search_contact_ids(${ws.id}::uuid, ${term}, ${identifierTerm}))`;
 }
 
 /** Recusa identidades que já pertencem a algum contato do workspace, dizendo qual. */

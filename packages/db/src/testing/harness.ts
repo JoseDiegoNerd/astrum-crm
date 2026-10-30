@@ -2,6 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
 import { drizzle as drizzlePostgres } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
@@ -48,7 +49,8 @@ export async function createTestDatabase(): Promise<TestDatabase> {
 }
 
 async function startPglite(): Promise<TestDatabase> {
-  const pg = new PGlite();
+  // extensões usadas pelas migrations precisam ser carregadas no PGlite
+  const pg = new PGlite({ extensions: { pg_trgm } });
   await pg.exec(await readFile(join(packageRoot, 'testing-assets/supabase-stub.sql'), 'utf8'));
   const files = (await readdir(migrationsDir)).filter((f) => f.endsWith('.sql')).sort();
   for (const file of files) {

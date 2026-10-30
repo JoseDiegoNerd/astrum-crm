@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
 import { loadEnv } from './config.js';
 import { DatabaseErrorFilter } from './http/database-error.filter.js';
@@ -13,7 +14,9 @@ try {
 
 async function bootstrap() {
   const env = loadEnv();
-  const app = await NestFactory.create(AppModule.forRoot(env));
+  const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(env));
+  // importação de CSV envia o arquivo inteiro (até ~5 MB) no corpo JSON
+  app.useBodyParser('json', { limit: '6mb' });
 
   app.setGlobalPrefix('v1', { exclude: ['health'] });
   app.enableCors({
