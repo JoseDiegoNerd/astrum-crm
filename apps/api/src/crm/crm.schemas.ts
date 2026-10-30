@@ -245,6 +245,77 @@ export const listDealsSchema = z.object({
 
 export const boardSchema = z.object({ pipeline: z.uuid().optional(), owner: z.uuid().optional() });
 
+// --- Tarefas e notas ---
+
+/**
+ * Prazo: ISO com fuso ("2026-10-30T17:00:00Z") ou horário local do workspace
+ * ("2026-10-30T14:00", como vem de <input type="datetime-local">).
+ */
+const dueAt = z
+  .union([z.iso.datetime({ offset: true }), z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/)])
+  .nullable()
+  .optional();
+
+export const createTaskSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(5000).optional(),
+  dueAt,
+  /** Padrão: quem cria. */
+  assigneeId: optionalUuid,
+  contactId: optionalUuid,
+  dealId: optionalUuid,
+  companyId: optionalUuid,
+});
+
+export const updateTaskSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    description: z.string().trim().max(5000).nullable().optional(),
+    dueAt,
+    assigneeId: optionalUuid,
+    contactId: optionalUuid,
+    dealId: optionalUuid,
+    companyId: optionalUuid,
+  })
+  .refine((v) => Object.values(v).some((x) => x !== undefined), 'Nada para alterar');
+
+export const listTasksSchema = z.object({
+  /** "me" (padrão), "any" ou o id de um membro. */
+  assignee: z.union([z.literal('me'), z.literal('any'), z.uuid()]).default('me'),
+  status: z.enum(['open', 'done', 'all']).default('open'),
+  contact: z.uuid().optional(),
+  deal: z.uuid().optional(),
+  company: z.uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(200),
+});
+
+export const createNoteSchema = z
+  .object({
+    body: z.string().trim().min(1).max(10000),
+    contactId: z.uuid().optional(),
+    dealId: z.uuid().optional(),
+    companyId: z.uuid().optional(),
+  })
+  .refine((v) => v.contactId || v.dealId || v.companyId, 'Informe o contato, negócio ou empresa da nota');
+
+export const updateNoteSchema = z.object({ body: z.string().trim().min(1).max(10000) });
+
+export const listNotesSchema = z
+  .object({
+    contact: z.uuid().optional(),
+    deal: z.uuid().optional(),
+    company: z.uuid().optional(),
+    limit: z.coerce.number().int().min(1).max(200).default(100),
+  })
+  .refine((v) => v.contact || v.deal || v.company, 'Filtre por contato, negócio ou empresa');
+
+export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+export type ListTasksInput = z.infer<typeof listTasksSchema>;
+export type CreateNoteInput = z.infer<typeof createNoteSchema>;
+export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;
+export type ListNotesInput = z.infer<typeof listNotesSchema>;
+
 export type CreatePipelineInput = z.infer<typeof createPipelineSchema>;
 export type UpdatePipelineInput = z.infer<typeof updatePipelineSchema>;
 export type CreateStageInput = z.infer<typeof createStageSchema>;

@@ -248,6 +248,35 @@ export const dealTags = pgTable('deal_tags', {
   ...timestamps,
 });
 
+// --- F1.4 · Tarefas e notas -----------------------------------------------------
+
+export const tasks = pgTable('tasks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  title: text('title').notNull(),
+  description: text('description'),
+  dueAt: timestamp('due_at', { withTimezone: true }),
+  assigneeId: uuid('assignee_id'),
+  contactId: uuid('contact_id'),
+  dealId: uuid('deal_id'),
+  companyId: uuid('company_id'),
+  doneAt: timestamp('done_at', { withTimezone: true }),
+  ...timestamps,
+});
+
+export const notes = pgTable('notes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  body: text('body').notNull(),
+  contactId: uuid('contact_id'),
+  dealId: uuid('deal_id'),
+  companyId: uuid('company_id'),
+  ...timestamps,
+});
+
+export type Task = typeof tasks.$inferSelect;
+export type Note = typeof notes.$inferSelect;
+
 export type Pipeline = typeof pipelines.$inferSelect;
 export type PipelineStage = typeof pipelineStages.$inferSelect;
 export type Deal = typeof deals.$inferSelect;

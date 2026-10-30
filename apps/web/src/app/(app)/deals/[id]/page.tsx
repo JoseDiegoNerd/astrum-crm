@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { NotesCard, TasksCard } from "@/components/work";
+import type { Note, Task } from "@/lib/api";
+import { getSession } from "@/lib/session";
 import { notFound } from "next/navigation";
 import { CustomFieldInputs, TagChips } from "@/components/crm";
 import { Button, Card, Input, Notice, Select } from "@/components/ui";
@@ -36,6 +39,11 @@ export default async function DealPage({ params, searchParams }: PageProps<"/dea
     api<TenantMember[]>(`/tenants/${current.tenant.id}/members`),
   ]);
   const pipeline = pipelines.find((p) => p.id === deal.pipelineId);
+  const [subjectTasks, subjectNotes, { me: sessionMe }] = await Promise.all([
+    workspaceApi<Task[]>(`/tasks?assignee=any&status=all&deal=${id}&limit=50`),
+    workspaceApi<Note[]>(`/notes?deal=${id}`),
+    getSession(),
+  ]);
   const editable = canEdit(current);
   const error = typeof query.error === "string" ? query.error : undefined;
 
@@ -180,6 +188,26 @@ export default async function DealPage({ params, searchParams }: PageProps<"/dea
             </form>
           )}
         </div>
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <TasksCard
+          tasks={subjectTasks}
+          subject={{ dealId: id }}
+          back={`/deals/${id}`}
+          timezone={current.workspace.timezone}
+          members={members}
+          me={sessionMe.profile?.id}
+          editable={editable}
+          deletable={canDelete(current)}
+        />
+        <NotesCard
+          notes={subjectNotes}
+          subject={{ dealId: id }}
+          back={`/deals/${id}`}
+          timezone={current.workspace.timezone}
+          editable={editable}
+          deletable={canDelete(current)}
+        />
       </div>
     </main>
   );

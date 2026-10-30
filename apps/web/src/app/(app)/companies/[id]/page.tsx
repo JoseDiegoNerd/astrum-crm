@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { NotesCard, TasksCard } from "@/components/work";
+import { api as workApi, type Note, type Task, type TenantMember as WorkMember } from "@/lib/api";
+import { getSession } from "@/lib/session";
 import { notFound } from "next/navigation";
 import { CustomFieldInputs, TagChips } from "@/components/crm";
 import { Button, Card, Input, Notice } from "@/components/ui";
@@ -18,6 +21,12 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
     workspaceApi<TagSummary[]>("/tags"),
     workspaceApi<CustomFieldDef[]>("/custom-fields?entity=company"),
     workspaceApi<Page<DealSummary>>(`/deals?company=${id}&limit=20`),
+  ]);
+  const [subjectTasks, subjectNotes, workMembers, { me: sessionMe }] = await Promise.all([
+    workspaceApi<Task[]>(`/tasks?assignee=any&status=all&company=${id}&limit=50`),
+    workspaceApi<Note[]>(`/notes?company=${id}`),
+    workApi<WorkMember[]>(`/tenants/${current.tenant.id}/members`),
+    getSession(),
   ]);
   const editable = canEdit(current);
   const error = typeof query.error === "string" ? query.error : undefined;
@@ -144,6 +153,26 @@ export default async function CompanyPage({ params, searchParams }: PageProps<"/
           )}
         </div>
       )}
+      <div className="grid gap-6 md:grid-cols-2">
+        <TasksCard
+          tasks={subjectTasks}
+          subject={{ companyId: id }}
+          back={`/companies/${id}`}
+          timezone={current.workspace.timezone}
+          members={workMembers}
+          me={sessionMe.profile?.id}
+          editable={editable}
+          deletable={canDelete(current)}
+        />
+        <NotesCard
+          notes={subjectNotes}
+          subject={{ companyId: id }}
+          back={`/companies/${id}`}
+          timezone={current.workspace.timezone}
+          editable={editable}
+          deletable={canDelete(current)}
+        />
+      </div>
     </main>
   );
 }

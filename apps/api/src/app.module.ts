@@ -9,7 +9,10 @@ import { CompaniesController, ContactsController, SettingsController } from './c
 import { DealsController, PipelinesController } from './crm/deals.controllers.js';
 import { DealsService } from './crm/deals.service.js';
 import { PipelinesService } from './crm/pipelines.service.js';
+import { NotesService } from './crm/notes.service.js';
 import { SettingsService } from './crm/settings.service.js';
+import { TasksService } from './crm/tasks.service.js';
+import { NotesController, TasksController } from './crm/work.controllers.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthController } from './health.controller.js';
 import { TenancyController } from './tenancy/tenancy.controller.js';
@@ -31,6 +34,8 @@ export class AppModule {
         SettingsController,
         DealsController,
         PipelinesController,
+        TasksController,
+        NotesController,
       ],
       providers: [
         { provide: ENV, useValue: env },
@@ -45,6 +50,8 @@ export class AppModule {
         SettingsService,
         DealsService,
         PipelinesService,
+        TasksService,
+        NotesService,
         WorkspaceGuard,
       ],
       exports: [ENV],

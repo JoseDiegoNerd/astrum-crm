@@ -226,3 +226,37 @@ export interface Board {
   pipeline: { id: string; name: string };
   columns: BoardColumn[];
 }
+
+// --- Tarefas e notas ---
+
+export type TaskBucket = "overdue" | "today" | "week" | "later" | "none" | "done";
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string | null;
+  dueAt: string | null;
+  doneAt: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  contactId: string | null;
+  contactName: string | null;
+  dealId: string | null;
+  dealTitle: string | null;
+  companyId: string | null;
+  companyName: string | null;
+  createdAt: string;
+  bucket: TaskBucket;
+}
+
+export interface Note {
+  id: string;
+  body: string;
+  contactId: string | null;
+  dealId: string | null;
+  companyId: string | null;
+  authorName: string | null;
+  mine: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
