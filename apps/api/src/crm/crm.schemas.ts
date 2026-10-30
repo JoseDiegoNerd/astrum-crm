@@ -309,6 +309,17 @@ export const listNotesSchema = z
   })
   .refine((v) => v.contact || v.deal || v.company, 'Filtre por contato, negócio ou empresa');
 
+export const timelineSchema = z
+  .object({
+    contact: z.uuid().optional(),
+    deal: z.uuid().optional(),
+    company: z.uuid().optional(),
+    cursor: z.string().max(200).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+  })
+  .refine((v) => v.contact || v.deal || v.company, 'Filtre por contato, negócio ou empresa');
+
+export type TimelineInput = z.infer<typeof timelineSchema>;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export type ListTasksInput = z.infer<typeof listTasksSchema>;

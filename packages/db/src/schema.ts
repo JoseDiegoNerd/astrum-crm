@@ -274,6 +274,36 @@ export const notes = pgTable('notes', {
   ...timestamps,
 });
 
+// --- F1.5 · Linha do tempo (somente leitura; escrita por triggers) ---------------
+
+export const activityTypes = [
+  'contact.created',
+  'company.created',
+  'deal.created',
+  'deal.stage_changed',
+  'deal.won',
+  'deal.lost',
+  'task.created',
+  'task.completed',
+  'note.added',
+] as const;
+export type ActivityType = (typeof activityTypes)[number];
+
+export const activities = pgTable('activities', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  workspaceId: uuid('workspace_id').notNull(),
+  type: text('type').$type<ActivityType>().notNull(),
+  contactId: uuid('contact_id'),
+  dealId: uuid('deal_id'),
+  companyId: uuid('company_id'),
+  actorId: uuid('actor_id'),
+  payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default({}),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Activity = typeof activities.$inferSelect;
+
 export type Task = typeof tasks.$inferSelect;
 export type Note = typeof notes.$inferSelect;
 

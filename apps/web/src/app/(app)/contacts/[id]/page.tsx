@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Timeline } from "@/components/timeline";
 import { NotesCard, TasksCard } from "@/components/work";
 import { api as workApi, type Note, type Task, type TenantMember as WorkMember } from "@/lib/api";
 import { getSession } from "@/lib/session";
@@ -245,6 +246,7 @@ export default async function ContactPage({ params, searchParams }: PageProps<"/
           deletable={canDelete(current)}
         />
       </div>
+      <Timeline subject={{ contactId: id }} timezone={current.workspace.timezone} />
     </main>
   );
 }

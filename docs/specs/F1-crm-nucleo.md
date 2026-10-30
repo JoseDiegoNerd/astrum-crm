@@ -1,6 +1,6 @@
 # F1 — Núcleo do CRM · Especificação
 
-> Status: **em andamento** — F1.1 a F1.4 implementadas (contatos, empresas, tags, campos customizados, funil, kanban, tarefas e notas) · Data: 2026-10-27 · Depende de: F0
+> Status: **em andamento** — F1.1 a F1.5 implementadas (falta F1.6: busca e importação CSV) · Data: 2026-10-27 · Depende de: F0
 > Toda tabela desta fase segue a skill `.claude/skills/astrum-nova-tabela`.
 
 ## 1. Objetivo
@@ -63,7 +63,8 @@ custom_field_defs  entity [contact|company|deal], key, label,
 activities         contact_id?, company_id?, deal_id?, type, actor_id, payload jsonb, occurred_at
 ```
 - **Somente leitura** para usuários (sem grants de insert/update/delete): escrita apenas por triggers (`security definer` no schema `private`) em contatos, negócios, tarefas e notas.
-- Tipos: `contact.created`, `deal.created`, `deal.stage_changed`, `deal.won`, `deal.lost`, `task.created`, `task.completed`, `note.added`. A F2 acrescenta `message.*`.
+- Exclusão do contato apaga o histórico dele (eliminação — LGPD); exclusão de negócio ou empresa só desfaz o vínculo, e o evento continua na ficha do contato.
+- Tipos: `contact.created`, `company.created`, `deal.created`, `deal.stage_changed`, `deal.won`, `deal.lost`, `task.created`, `task.completed`, `note.added`. A F2 acrescenta `message.*`.
 
 ## 3. Permissões (matriz)
 
@@ -111,7 +112,7 @@ Cada fatia passa por: banco (skill `astrum-nova-tabela`) → API → tela → te
 | **F1.2** ✅ | tags, junções, custom_field_defs | filtro por tag funciona; campo custom obrigatório bloqueia salvar sem valor |
 | **F1.3** ✅ | pipelines, stages, deals, pipeline padrão + kanban | workspace novo já tem "Vendas"; arrastar para "Ganho" marca won e `closed_at` |
 | **F1.4** ✅ | tasks, notes + Minhas tarefas | tarefa atrasada aparece em "atrasadas"; agent não edita nota de outro |
-| **F1.5** | activities + triggers + linha do tempo | criar contato, mover negócio e concluir tarefa aparecem na ficha, em ordem |
+| **F1.5** ✅ | activities + triggers + linha do tempo | criar contato, mover negócio e concluir tarefa aparecem na ficha, em ordem |
 | **F1.6** | busca (pg_trgm) + importação CSV | busca por trecho de nome/telefone < 300 ms com 50 mil contatos; CSV de 5 mil linhas importa sem duplicar identidades |
 
 ## 7. Requisitos não funcionais

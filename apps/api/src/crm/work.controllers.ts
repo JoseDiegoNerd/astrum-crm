@@ -21,16 +21,19 @@ import {
   listNotesSchema,
   listTasksSchema,
   updateNoteSchema,
+  timelineSchema,
   updateTaskSchema,
   type CreateNoteInput,
   type CreateTaskInput,
   type ListNotesInput,
   type ListTasksInput,
+  type TimelineInput,
   type UpdateNoteInput,
   type UpdateTaskInput,
 } from './crm.schemas.js';
 import { NotesService } from './notes.service.js';
 import { TasksService } from './tasks.service.js';
+import { TimelineService } from './timeline.service.js';
 
 @Controller('tasks')
 @UseGuards(WorkspaceGuard)
@@ -127,5 +130,21 @@ export class NotesController {
   @HttpCode(204)
   remove(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext, @Param('id', uuidParam) id: string) {
     return this.notes.remove(user, ws, id);
+  }
+}
+
+@Controller('timeline')
+@UseGuards(WorkspaceGuard)
+export class TimelineController {
+  constructor(@Inject(TimelineService) private readonly timeline: TimelineService) {}
+
+  /** Eventos de um contato, negócio ou empresa (só leitura; registrados pelo banco). */
+  @Get()
+  list(
+    @CurrentUser() user: JwtClaims,
+    @CurrentWorkspace() ws: WorkspaceContext,
+    @Query(new ZodPipe(timelineSchema)) query: TimelineInput,
+  ) {
+    return this.timeline.list(user, ws, query);
   }
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Timeline } from "@/components/timeline";
 import { NotesCard, TasksCard } from "@/components/work";
 import type { Note, Task } from "@/lib/api";
 import { getSession } from "@/lib/session";
@@ -209,6 +210,7 @@ export default async function DealPage({ params, searchParams }: PageProps<"/dea
           deletable={canDelete(current)}
         />
       </div>
+      <Timeline subject={{ dealId: id }} timezone={current.workspace.timezone} />
     </main>
   );
 }

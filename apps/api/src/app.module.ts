@@ -12,7 +12,8 @@ import { PipelinesService } from './crm/pipelines.service.js';
 import { NotesService } from './crm/notes.service.js';
 import { SettingsService } from './crm/settings.service.js';
 import { TasksService } from './crm/tasks.service.js';
-import { NotesController, TasksController } from './crm/work.controllers.js';
+import { TimelineService } from './crm/timeline.service.js';
+import { NotesController, TasksController, TimelineController } from './crm/work.controllers.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthController } from './health.controller.js';
 import { TenancyController } from './tenancy/tenancy.controller.js';
@@ -36,6 +37,7 @@ export class AppModule {
         PipelinesController,
         TasksController,
         NotesController,
+        TimelineController,
       ],
       providers: [
         { provide: ENV, useValue: env },
@@ -52,6 +54,7 @@ export class AppModule {
         PipelinesService,
         TasksService,
         NotesService,
+        TimelineService,
         WorkspaceGuard,
       ],
       exports: [ENV],
