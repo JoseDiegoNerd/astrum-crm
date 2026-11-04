@@ -9,6 +9,11 @@ const envSchema = z.object({
   // assimétricas validam pelo JWKS e não precisam disto.
   SUPABASE_JWT_SECRET: z.string().min(32).optional(),
   WEB_ORIGIN: z.string().default('http://localhost:3000'),
+  // F2 · canais: chave que cifra os segredos dos canais (32 bytes em base64).
+  // Obrigatória para conectar canais; gere com: openssl rand -base64 32
+  CHANNEL_SECRETS_KEY: z.string().optional(),
+  // Versão da Graph API da Meta usada pelo WhatsApp (confira a vigente no painel do app)
+  WHATSAPP_GRAPH_VERSION: z.string().regex(/^v\d+\.\d+$/).default('v24.0'),
 });
 
 export type Env = z.infer<typeof envSchema>;

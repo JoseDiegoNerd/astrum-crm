@@ -4,6 +4,7 @@ import {
   bigint,
   boolean,
   char,
+  customType,
   date,
   doublePrecision,
   integer,
@@ -273,6 +274,131 @@ export const notes = pgTable('notes', {
   companyId: uuid('company_id'),
   ...timestamps,
 });
+
+// --- F2.1 · Inbox: canais, conversas, mensagens --------------------------------
+
+export const channelType = pgEnum('channel_type', ['whatsapp', 'email', 'instagram', 'messenger', 'telegram', 'webchat']);
+export const channelStatus = pgEnum('channel_status', ['pending', 'connected', 'error', 'disabled']);
+export const conversationStatus = pgEnum('conversation_status', ['open', 'pending', 'resolved']);
+export const messageDirection = pgEnum('message_direction', ['in', 'out']);
+export const messageSender = pgEnum('message_sender', ['contact', 'user', 'system']);
+export const messageType = pgEnum('message_type', [
+  'text',
+  'image',
+  'audio',
+  'video',
+  'document',
+  'sticker',
+  'location',
+  'template',
+  'interactive',
+  'unsupported',
+]);
+export const messageStatus = pgEnum('message_status', ['received', 'queued', 'sent', 'delivered', 'read', 'failed']);
+export const inboundEventStatus = pgEnum('inbound_event_status', ['pending', 'processed', 'failed', 'ignored']);
+
+const bytea = customType<{ data: Buffer; driverData: Buffer | Uint8Array }>({
+  dataType: () => 'bytea',
+  fromDriver: (value) => (Buffer.isBuffer(value) ? value : Buffer.from(value)),
+});
+
+export const channels = pgTable('channels', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  type: channelType('type').notNull(),
+  name: text('name').notNull(),
+  status: channelStatus('status').notNull().default('pending'),
+  externalAccountId: text('external_account_id'),
+  externalId: text('external_id'),
+  displayIdentifier: text('display_identifier'),
+  config: jsonb('config').$type<Record<string, unknown>>().notNull().default({}),
+  // ⚠ segredos: usuários não têm SELECT nessas colunas — selecione colunas
+  // explícitas (channelPublicColumns) em consultas feitas como usuário
+  credentialsEnc: bytea('credentials_enc'),
+  webhookSecretHash: text('webhook_secret_hash'),
+  lastError: text('last_error'),
+  connectedAt: timestamp('connected_at', { withTimezone: true }),
+  ...timestamps,
+});
+
+/** Colunas de channels legíveis por usuários (sem segredos). */
+export const channelPublicColumns = {
+  id: channels.id,
+  tenantId: channels.tenantId,
+  workspaceId: channels.workspaceId,
+  type: channels.type,
+  name: channels.name,
+  status: channels.status,
+  externalAccountId: channels.externalAccountId,
+  externalId: channels.externalId,
+  displayIdentifier: channels.displayIdentifier,
+  config: channels.config,
+  lastError: channels.lastError,
+  connectedAt: channels.connectedAt,
+  createdAt: channels.createdAt,
+  updatedAt: channels.updatedAt,
+};
+
+export const conversations = pgTable('conversations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ...workspaceScoped,
+  channelId: uuid('channel_id').notNull(),
+  contactId: uuid('contact_id').notNull(),
+  identityId: uuid('identity_id'),
+  status: conversationStatus('status').notNull().default('open'),
+  assigneeId: uuid('assignee_id'),
+  subject: text('subject'),
+  lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
+  lastInboundAt: timestamp('last_inbound_at', { withTimezone: true }),
+  lastOutboundAt: timestamp('last_outbound_at', { withTimezone: true }),
+  unreadCount: integer('unread_count').notNull().default(0),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  ...timestamps,
+});
+
+export const messages = pgTable('messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  workspaceId: uuid('workspace_id').notNull(),
+  conversationId: uuid('conversation_id').notNull(),
+  channelId: uuid('channel_id').notNull(),
+  direction: messageDirection('direction').notNull(),
+  senderType: messageSender('sender_type').notNull(),
+  // preenchido pelo banco (auth.uid()) nas mensagens de usuários
+  senderId: uuid('sender_id'),
+  type: messageType('type').notNull().default('text'),
+  body: text('body'),
+  content: jsonb('content').$type<Record<string, unknown>>().notNull().default({}),
+  externalId: text('external_id'),
+  replyToId: uuid('reply_to_id'),
+  status: messageStatus('status').notNull().default('queued'),
+  error: jsonb('error').$type<Record<string, unknown>>(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  readAt: timestamp('read_at', { withTimezone: true }),
+  ...timestamps,
+});
+
+export const inboundEvents = pgTable('inbound_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  workspaceId: uuid('workspace_id').notNull(),
+  channelId: uuid('channel_id').notNull(),
+  externalId: text('external_id').notNull(),
+  payload: jsonb('payload').$type<unknown>().notNull(),
+  status: inboundEventStatus('status').notNull().default('pending'),
+  attempts: integer('attempts').notNull().default(0),
+  error: text('error'),
+  receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  processedAt: timestamp('processed_at', { withTimezone: true }),
+});
+
+export type Channel = typeof channels.$inferSelect;
+export type ChannelType = (typeof channelType.enumValues)[number];
+export type Conversation = typeof conversations.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+export type MessageType = (typeof messageType.enumValues)[number];
+export type MessageStatus = (typeof messageStatus.enumValues)[number];
 
 // --- F1.5 · Linha do tempo (somente leitura; escrita por triggers) ---------------
 
