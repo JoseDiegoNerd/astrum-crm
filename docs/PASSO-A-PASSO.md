@@ -1,24 +1,46 @@
 # Passo a passo — o que depende de você
 
-> Atualizado em 2026-10-27. Cada etapa diz **o que fazer**, **como conferir** e **o que me mandar** para eu continuar.
+> Atualizado em 2026-11-03. Cada etapa diz **o que fazer**, **como conferir** e **o que me mandar** para eu continuar.
 > Ordem sugerida: 1 → 2 → 3 hoje; 4 quando for publicar; 5 começar já (é a mais demorada).
 
 ---
 
-## 1. Docker Desktop (para rodar o Supabase local) · ~20 min
+## 1. Docker Desktop (para rodar o Supabase local) · ~30 min + 1 reinício
 
-1. Baixe em <https://www.docker.com/products/docker-desktop/> (Windows, AMD64).
-2. Na instalação, deixe marcado **"Use WSL 2"**. Se o Windows pedir para instalar/atualizar o WSL, aceite e reinicie.
-3. Abra o Docker Desktop e espere o ícone ficar verde ("Engine running").
-4. **Conferir** — no terminal:
-   ```bash
+Situação desta máquina (verificada em 2026-11-03): Windows 11 Home, **WSL não instalado**, 8 GB de RAM, **só 14 GB livres no C:** e 99 GB no E:. Por isso os dados do Docker vão para o **E:** e a memória do Docker fica limitada.
+
+### 1.1 Instalar o WSL 2
+1. Abra o **PowerShell como administrador** (menu Iniciar → digite PowerShell → botão direito → *Executar como administrador*).
+2. Rode:
+   ```powershell
+   wsl --install --no-distribution
+   ```
+3. **Reinicie o computador** quando terminar.
+4. Se aparecer erro de virtualização: entre na BIOS/UEFI e ative *Intel VT-x* / *AMD-V (SVM)*.
+
+### 1.2 Limitar a memória do Docker (8 GB de RAM)
+Crie o arquivo `C:\Users\Usuario\.wslconfig` (no Bloco de Notas, salvando como "Todos os arquivos") com:
+```ini
+[wsl2]
+memory=4GB
+swap=4GB
+```
+Assim Docker + Supabase usam no máximo 4 GB e o resto do Windows continua fluindo.
+
+### 1.3 Instalar o Docker Desktop
+1. Baixe em <https://www.docker.com/products/docker-desktop/> → **Download for Windows – AMD64**.
+2. Instale com **"Use WSL 2 instead of Hyper-V"** marcado. Reinicie se pedir.
+3. Abra o Docker Desktop, aceite os termos e pule o login (não é necessário).
+4. **Mover os dados para o E:** — *Settings → Resources → Advanced → Disk image location* → escolha `E:\Docker` → *Apply & restart*.
+5. **Conferir** — num terminal novo:
+   ```powershell
    docker info
    ```
-   Deve mostrar "Server Version". Se der erro, o Docker Desktop não está aberto.
+   Deve mostrar "Server Version". Se der erro, o Docker Desktop não está aberto (ícone da baleia na bandeja deve estar parado, não animado).
 
-**Me avise** quando o `docker info` funcionar.
+**Me avise** quando o `docker info` funcionar — a partir daí eu faço o passo 2.
 
-## 2. Rodar o Astrum localmente · ~10 min (posso fazer por você depois do passo 1)
+## 2. Rodar o Astrum localmente · ~10 min (eu faço depois do passo 1)
 
 ```bash
 supabase start
