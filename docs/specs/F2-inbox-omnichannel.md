@@ -1,6 +1,6 @@
 # F2 — Inbox omnichannel + WhatsApp · Especificação
 
-> Status: **em andamento** — F2.1 implementada (banco + camada de canais + adaptador WhatsApp) · Data: 2026-11-03 · Depende de: F1
+> Status: **em andamento** — F2.1 e F2.2 implementadas (banco, adaptador WhatsApp, webhook e fila de entrada) · Data: 2026-11-03 · Depende de: F1
 > Toda tabela segue a skill `.claude/skills/astrum-nova-tabela`.
 
 ## 1. Objetivo
@@ -38,7 +38,9 @@ Atendente ──POST /conversations/:id/messages──▶ API (sob RLS, papel ag
 Worker: adaptador.send → grava external_id, status sent; webhooks de status atualizam delivered/read/failed
 ```
 
-- **Fila:** BullMQ (Redis) em produção. Atrás de uma interface `JobQueue`, com implementação **em processo** para testes e para rodar sem Redis.
+- **Fila (decisão da F2.2):** a própria tabela `inbound_events` no Postgres, consumida com `FOR UPDATE SKIP LOCKED` (vários workers sem disputa) e novas tentativas com espera crescente (`next_attempt_at`; 6 tentativas). Sem Redis por enquanto: um serviço a menos, eventos duráveis e testável sem Docker. BullMQ/Redis só quando o volume pedir.
+- **Worker:** roda no processo da API (`InboundWorker`: dispara logo após cada webhook e a cada `INBOUND_POLL_MS`); vira processo separado quando o volume pedir.
+- **Linha do tempo:** registra `conversation.opened` e `conversation.resolved` (não uma linha por mensagem).
 - **Acesso sem usuário:** webhooks e workers usam a conexão de serviço (`withServiceContext`), que ignora RLS. Toda consulta nesse caminho filtra por `workspace_id` vindo do **canal**, nunca do payload.
 
 ## 4. Modelo de dados (F2.1)
@@ -109,7 +111,7 @@ WhatsApp Cloud API: `POST https://graph.facebook.com/{versão}/{phone_number_id}
 | Fatia | Conteúdo | Pronto quando |
 |---|---|---|
 | **F2.1** ✅ | Banco (channels, conversations, messages, inbound_events) + `ChannelAdapter` + adaptador WhatsApp (assinatura, parse, envio) + cifra de segredos | testes com payloads de exemplo da Meta; viewer não vê segredos; outro tenant não vê nada |
-| **F2.2** | Webhook + fila + worker de entrada | payload do WhatsApp vira contato + conversa + mensagem; evento repetido não duplica |
+| **F2.2** ✅ | Webhook + fila + worker de entrada | payload do WhatsApp vira contato + conversa + mensagem; evento repetido não duplica |
 | **F2.3** | Envio + status + janela de 24 h | atendente responde; status chega a "lido"; fora da janela exige template |
 | **F2.4** | Inbox (telas) + atualização em tempo real | duas abas abertas veem a mensagem nova sem recarregar |
 | **F2.5** | Configurações → Canais (conexão manual) + teste com o número de teste da Meta | mensagem real do seu celular aparece no Inbox (depende da tarefa C4 do PASSO-A-PASSO) |

@@ -38,3 +38,17 @@ export function withUserContext<T>(
     return fn(tx);
   });
 }
+
+/**
+ * Transação SEM usuário, para webhooks e workers: a conexão da API é dona das
+ * tabelas e ignora a RLS. Use só em código que não atende requisição de usuário
+ * e filtre SEMPRE por workspace_id/tenant_id vindos do próprio registro (ex.: o
+ * canal do webhook), nunca do payload externo. auth.uid() fica nulo (created_by
+ * e actor_id ficam vazios = "sistema").
+ */
+export function withServiceContext<T>(db: Database, fn: (tx: Transaction) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select set_config('request.jwt.claims', '', true)`);
+    return fn(tx);
+  });
+}

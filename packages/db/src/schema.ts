@@ -391,6 +391,7 @@ export const inboundEvents = pgTable('inbound_events', {
   error: text('error'),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
   processedAt: timestamp('processed_at', { withTimezone: true }),
+  nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type Channel = typeof channels.$inferSelect;
@@ -412,6 +413,8 @@ export const activityTypes = [
   'task.created',
   'task.completed',
   'note.added',
+  'conversation.opened',
+  'conversation.resolved',
 ] as const;
 export type ActivityType = (typeof activityTypes)[number];
 
@@ -423,6 +426,7 @@ export const activities = pgTable('activities', {
   contactId: uuid('contact_id'),
   dealId: uuid('deal_id'),
   companyId: uuid('company_id'),
+  conversationId: uuid('conversation_id'),
   actorId: uuid('actor_id'),
   payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default({}),
   occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),

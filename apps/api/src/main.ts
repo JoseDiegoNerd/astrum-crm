@@ -14,7 +14,8 @@ try {
 
 async function bootstrap() {
   const env = loadEnv();
-  const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(env));
+  // rawBody: webhooks validam a assinatura sobre o corpo exato recebido
+  const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(env), { rawBody: true });
   // importação de CSV envia o arquivo inteiro (até ~5 MB) no corpo JSON
   app.useBodyParser('json', { limit: '6mb' });
 

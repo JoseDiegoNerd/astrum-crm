@@ -326,7 +326,7 @@ Worker:
 |---|---|---|
 | Banco | Postgres gerenciado único | Particionar `messages` por mês; réplica de leitura para relatórios. |
 | Busca | Postgres FTS + `pg_trgm` | OpenSearch/Meilisearch para busca em mensagens. |
-| Filas | BullMQ em Redis único | Filas separadas por prioridade/canal; workers escalados por fila. |
+| Filas | Postgres (`inbound_events` com `SKIP LOCKED`) — decisão da F2.2 | BullMQ/Redis com filas por prioridade/canal e workers escalados por fila. |
 | Realtime | Supabase Realtime | Socket.IO próprio + Redis adapter se custo/limites apertarem. |
 | Relatórios | Views/materialized views | Data warehouse (ClickHouse/BigQuery) via CDC. |
 

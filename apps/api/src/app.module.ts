@@ -15,7 +15,12 @@ import { SettingsService } from './crm/settings.service.js';
 import { TasksService } from './crm/tasks.service.js';
 import { TimelineService } from './crm/timeline.service.js';
 import { NotesController, TasksController, TimelineController } from './crm/work.controllers.js';
+import { SecretBox } from './channels/secrets.js';
+import { WhatsAppCloudAdapter } from './channels/whatsapp/whatsapp.adapter.js';
 import { DatabaseModule } from './database/database.module.js';
+import { InboundProcessor } from './inbox/inbound.processor.js';
+import { InboundWorker } from './inbox/inbound.worker.js';
+import { WhatsAppWebhookController } from './inbox/webhooks.controller.js';
 import { HealthController } from './health.controller.js';
 import { TenancyController } from './tenancy/tenancy.controller.js';
 import { TenancyService } from './tenancy/tenancy.service.js';
@@ -39,6 +44,7 @@ export class AppModule {
         TasksController,
         NotesController,
         TimelineController,
+        WhatsAppWebhookController,
       ],
       providers: [
         { provide: ENV, useValue: env },
@@ -57,6 +63,11 @@ export class AppModule {
         NotesService,
         TimelineService,
         ImportService,
+        // canais (F2): sem CHANNEL_SECRETS_KEY a API sobe, mas webhooks/envio respondem 503
+        { provide: SecretBox, useFactory: () => (env.CHANNEL_SECRETS_KEY ? new SecretBox(env.CHANNEL_SECRETS_KEY) : null) },
+        { provide: WhatsAppCloudAdapter, useFactory: () => new WhatsAppCloudAdapter({ graphVersion: env.WHATSAPP_GRAPH_VERSION }) },
+        InboundProcessor,
+        InboundWorker,
         WorkspaceGuard,
       ],
       exports: [ENV],
