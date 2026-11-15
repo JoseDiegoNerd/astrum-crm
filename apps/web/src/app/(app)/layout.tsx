@@ -17,6 +17,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
 }
 
 const NAV = [
+  { href: "/inbox", label: "Inbox" },
   { href: "/deals", label: "Negócios" },
   { href: "/tasks", label: "Tarefas" },
   { href: "/contacts", label: "Contatos" },
@@ -32,7 +33,7 @@ async function Header() {
 
   return (
     <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-zinc-200 px-6 py-3 dark:border-zinc-800">
-      <Link href="/contacts" className="font-semibold">
+      <Link href="/inbox" className="font-semibold">
         Astrum
       </Link>
       <nav className="flex gap-4 text-sm">

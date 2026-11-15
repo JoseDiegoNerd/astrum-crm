@@ -260,3 +260,49 @@ export interface Note {
   createdAt: string;
   updatedAt: string;
 }
+
+// --- Inbox ---
+
+export type ConversationStatus = "open" | "pending" | "resolved";
+export type MessageStatus = "received" | "queued" | "sent" | "delivered" | "read" | "failed";
+
+export interface Conversation {
+  id: string;
+  status: ConversationStatus;
+  subject: string | null;
+  channelId: string;
+  channelName: string;
+  channelType: string;
+  contactId: string;
+  contactName: string;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  unreadCount: number;
+  lastMessageAt: string | null;
+  lastInboundAt: string | null;
+  activityAt: string;
+  lastMessage: { body: string | null; type: string; direction: "in" | "out"; status: MessageStatus } | null;
+  capabilities: { freeText: boolean; reason?: string };
+}
+
+export interface InboxMessage {
+  id: string;
+  direction: "in" | "out";
+  senderType: "contact" | "user" | "system";
+  senderName: string | null;
+  type: string;
+  body: string | null;
+  content: Record<string, unknown>;
+  status: MessageStatus;
+  error: { message?: string; title?: string; code?: number } | null;
+  createdAt: string;
+}
+
+export interface Channel {
+  id: string;
+  type: string;
+  name: string;
+  status: "pending" | "connected" | "error" | "disabled";
+  displayIdentifier: string | null;
+  lastError: string | null;
+}

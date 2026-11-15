@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Timeline } from "@/components/timeline";
+import { formatDateTime } from "@/lib/dates";
+import type { Conversation } from "@/lib/api";
 import { NotesCard, TasksCard } from "@/components/work";
 import { api as workApi, type Note, type Task, type TenantMember as WorkMember } from "@/lib/api";
 import { getSession } from "@/lib/session";
@@ -246,7 +248,35 @@ export default async function ContactPage({ params, searchParams }: PageProps<"/
           deletable={canDelete(current)}
         />
       </div>
+      <ContactConversations contactId={id} timezone={current.workspace.timezone} />
       <Timeline subject={{ contactId: id }} timezone={current.workspace.timezone} />
     </main>
+  );
+}
+
+const CONVERSATION_STATUS = { open: "aberta", pending: "pendente", resolved: "resolvida" } as const;
+
+/** Conversas do contato em todos os canais (mais recentes primeiro). */
+async function ContactConversations({ contactId, timezone }: { contactId: string; timezone: string }) {
+  const { items } = await workspaceApi<{ items: Conversation[] }>(`/conversations?contact=${contactId}&status=all&limit=10`);
+  return (
+    <Card title={`Conversas (${items.length})`}>
+      {items.length === 0 ? (
+        <p className="text-sm text-zinc-500">Nenhuma conversa ainda. Quando este contato mandar mensagem, ela aparece aqui e no Inbox.</p>
+      ) : (
+        <ul className="divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
+          {items.map((conversation) => (
+            <li key={conversation.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+              <Link href={`/inbox?view=all&c=${conversation.id}`} className="hover:underline">
+                {conversation.channelName} · {CONVERSATION_STATUS[conversation.status]}
+              </Link>
+              <span className="truncate text-xs text-zinc-500">
+                {conversation.lastMessage?.body ?? ""} · {formatDateTime(conversation.activityAt, timezone)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }
