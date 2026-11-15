@@ -14,6 +14,8 @@ const envSchema = z.object({
   CHANNEL_SECRETS_KEY: z.string().optional(),
   // Versão da Graph API da Meta usada pelo WhatsApp (confira a vigente no painel do app)
   WHATSAPP_GRAPH_VERSION: z.string().regex(/^v\d+\.\d+$/).default('v24.0'),
+  // Endereço público da API (para montar a URL do webhook que vai no painel da Meta)
+  PUBLIC_API_URL: z.url().default('http://localhost:3333'),
   // Intervalo das novas tentativas da fila de entrada (ms). 0 desliga o timer.
   INBOUND_POLL_MS: z.coerce.number().int().min(0).default(5000),
 });

@@ -4,8 +4,10 @@ import {
   ChannelSendError,
   type ChannelAdapter,
   type ChannelSecrets,
+  type ConnectionInfo,
   type DeliveryStatus,
   type InboundMessage,
+  type MessageTemplate,
   type NormalizedEvent,
   type OutboundMessage,
   type SendCapabilities,
@@ -164,6 +166,52 @@ export class WhatsAppCloudAdapter implements ChannelAdapter {
     const externalId = json.messages?.[0]?.id;
     if (!externalId) throw new ChannelSendError('WhatsApp não devolveu o id da mensagem', { retryable: false });
     return { externalId };
+  }
+
+  /** GET /{phone_number_id}: confere o token e devolve o número e o nome verificado. */
+  async checkConnection(phoneNumberId: string, secrets: ChannelSecrets): Promise<ConnectionInfo> {
+    const json = await this.graphGet<{ display_phone_number?: string; verified_name?: string }>(
+      `${encodeURIComponent(phoneNumberId)}?fields=display_phone_number,verified_name`,
+      secrets,
+    );
+    if (!json.display_phone_number) throw new ChannelSendError('A Meta não reconheceu este número', { retryable: false });
+    return { displayIdentifier: json.display_phone_number, verifiedName: json.verified_name };
+  }
+
+  /** GET /{waba_id}/message_templates: só os aprovados, com quantos parâmetros cada um espera. */
+  async listTemplates(wabaId: string, secrets: ChannelSecrets): Promise<MessageTemplate[]> {
+    const json = await this.graphGet<{
+      data?: { name: string; language: string; status: string; category?: string; components?: { type: string; text?: string }[] }[];
+    }>(`${encodeURIComponent(wabaId)}/message_templates?fields=name,language,status,category,components&limit=200`, secrets);
+    return (json.data ?? [])
+      .filter((template) => template.status === 'APPROVED')
+      .map((template) => {
+        const body = template.components?.find((c) => c.type === 'BODY')?.text;
+        return {
+          name: template.name,
+          language: template.language,
+          category: template.category,
+          body,
+          parameterCount: new Set(body?.match(/\{\{\d+\}\}/g) ?? []).size,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name) || a.language.localeCompare(b.language));
+  }
+
+  private async graphGet<T>(path: string, secrets: ChannelSecrets): Promise<T> {
+    if (!secrets.accessToken) throw new ChannelSendError('Canal sem token de acesso', { retryable: false });
+    const response = await this.fetchImpl(`${this.baseUrl}/${this.options.graphVersion}/${path}`, {
+      headers: { authorization: `Bearer ${secrets.accessToken}` },
+    });
+    const json = (await response.json().catch(() => ({}))) as T & { error?: { message?: string; code?: number } };
+    if (!response.ok || json.error) {
+      throw new ChannelSendError(json.error?.message ?? `A Meta respondeu ${response.status}`, {
+        status: response.status,
+        code: json.error?.code,
+        retryable: response.status >= 500,
+      });
+    }
+    return json;
   }
 
   capabilities(conversation: { lastInboundAt: Date | null }, now = new Date()): SendCapabilities {

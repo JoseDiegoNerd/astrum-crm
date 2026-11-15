@@ -44,9 +44,11 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   notes_workspace_id_deal_id_fkey: 'Negócio não encontrado neste workspace',
   notes_workspace_id_company_id_fkey: 'Empresa não encontrada neste workspace',
   notes_subject_check: 'Informe o contato, negócio ou empresa da nota',
+  channels_type_external_id_key: 'Este número já está conectado ao Astrum (neste ou em outro workspace)',
   conversations_one_active_key: 'Já existe uma conversa ativa com este contato neste canal',
   // mesmas constraints, mas no caminho do delete bloqueado (código 23001)
   '23001:deals_pipeline_id_stage_id_fkey': 'Esta etapa ainda tem negócios; mova-os antes de excluir',
+  '23001:conversations_workspace_id_channel_id_fkey': 'Este canal tem conversas: desative-o em vez de excluir',
   '23001:deals_workspace_id_pipeline_id_fkey': 'Este pipeline ainda tem negócios; mova-os antes de excluir',
 };
 

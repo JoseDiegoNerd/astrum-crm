@@ -177,6 +177,18 @@ O Astrum vai conectar o WhatsApp **dos seus clientes**. Para a Meta permitir, a 
 6. **Não me mande** o *token de acesso* nem a *Chave secreta do app* (*App Secret*). Quando a F2 estiver pronta eu digo exatamente onde colá-los.
 7. Ainda nessa tela, em **Para** (*To*), adicione o **seu celular** como destinatário de teste e confirme o código que chega no WhatsApp — assim conseguiremos trocar mensagens de teste com você.
 
+### C4b. Conectar o número de teste no Astrum (depois de A e C4)
+1. A Meta precisa chamar a API por um endereço **público com HTTPS**. Com o Astrum rodando no seu computador, eu crio um túnel temporário (Cloudflare Tunnel) e te passo a URL — ou usamos a API já publicada (tarefa E3).
+2. No Astrum: **Configurações → Canais (WhatsApp) → Conectar um número de WhatsApp**:
+   - **Nome do canal:** ex.: `WhatsApp Teste`;
+   - **ID do número de telefone** e **ID da conta do WhatsApp Business:** os anotados em C4.5;
+   - **Chave secreta do app:** em *Configurações do app → Básico → Chave secreta do app → Mostrar*;
+   - **Token de acesso:** o temporário da tela *Configuração da API* serve para testar (vale 24 h). Para uso contínuo, crie um **token permanente de usuário do sistema** em *Configurações do negócio → Usuários do sistema* (eu te guio quando chegar a hora).
+   → **Conectar WhatsApp**. Deve aparecer "conectado: a Meta confirmou o número".
+3. **Copie na hora** a *URL de retorno* e o *Token de verificação* que aparecem (o token não é mostrado de novo; se perder, use "Gerar novo verify token").
+4. No painel da Meta: **WhatsApp → Configuração → Webhook → Editar** → cole os dois → **Verificar e salvar** → em *Campos do webhook*, **assine `messages`**.
+5. **Teste:** do seu celular (cadastrado em C4.7), mande "oi" para o número de teste. A conversa deve aparecer no **Inbox** em segundos. Responda pelo Astrum e veja chegar no celular.
+
 ### C5. Configurações básicas do app
 **Configurações do app → Básico** (*App settings → Basic*):
 - **URL da Política de Privacidade** e **URL dos Termos de Serviço** — os endereços da tarefa D3.

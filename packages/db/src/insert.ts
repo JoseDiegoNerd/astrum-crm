@@ -10,15 +10,26 @@ import type { PgTable } from 'drizzle-orm/pg-core';
  * (created_by, verified etc. ficam de fora), use este helper para elas:
  *
  *   const [row] = await insertRows(tx, contacts, { tenantId, workspaceId, name });
+ *
+ * `returning` limita as colunas devolvidas — necessário em tabelas com colunas
+ * que o usuário não pode ler (ex.: segredos de channels), pois RETURNING *
+ * exige SELECT em todas.
  */
-export function insertSql<T extends PgTable>(table: T, values: Partial<T['$inferInsert']>): SQL {
+export function insertSql<T extends PgTable>(
+  table: T,
+  values: Partial<T['$inferInsert']>,
+  returning?: (keyof T['$inferSelect'] & string)[],
+): SQL {
   const columns = getTableColumns(table);
   const entries = Object.entries(values).filter(([, value]) => value !== undefined);
   if (entries.length === 0) throw new Error('insertSql: nenhum valor informado');
 
   const names = entries.map(([key]) => sql.identifier(column(columns, key).name));
   const params = entries.map(([key, value]) => sql.param(value, column(columns, key)));
-  return sql`insert into ${table} (${sql.join(names, sql`, `)}) values (${sql.join(params, sql`, `)}) returning *`;
+  const returned = returning?.length
+    ? sql.join(returning.map((key) => sql.identifier(column(columns, key).name)), sql`, `)
+    : sql`*`;
+  return sql`insert into ${table} (${sql.join(names, sql`, `)}) values (${sql.join(params, sql`, `)}) returning ${returned}`;
 }
 
 interface Executor {
@@ -43,8 +54,9 @@ export async function insertRows<T extends PgTable>(
   tx: Executor,
   table: T,
   values: Partial<T['$inferInsert']>,
+  options: { returning?: (keyof T['$inferSelect'] & string)[] } = {},
 ): Promise<T['$inferSelect'][]> {
-  const rows = await executeRows(tx, insertSql(table, values));
+  const rows = await executeRows(tx, insertSql(table, values, options.returning));
   return rows.map((row) => mapRow(table, row));
 }
 

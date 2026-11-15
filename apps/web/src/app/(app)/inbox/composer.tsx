@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { Button, Input } from "@/components/ui";
+import type { MessageTemplate } from "@/lib/api";
 import { sendMessage, type SendState } from "./actions";
 
 /**
@@ -13,11 +14,14 @@ export function Composer({
   freeText,
   reason,
   disabled,
+  templates = [],
 }: {
   conversationId: string;
   freeText: boolean;
   reason?: string;
   disabled?: string;
+  /** Templates aprovados na Meta, sugeridos no campo de nome. */
+  templates?: MessageTemplate[];
 }) {
   const [state, action, pending] = useActionState<SendState, FormData>(sendMessage, {});
   const form = useRef<HTMLFormElement>(null);
@@ -63,7 +67,14 @@ export function Composer({
           <input type="hidden" name="kind" value="template" />
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">{reason}</p>
           <div className="grid gap-2 sm:grid-cols-[1fr_100px]">
-            <Input name="templateName" required placeholder="Nome do template aprovado (ex.: retomar_conversa)" />
+            <Input name="templateName" required list={`templates-${conversationId}`} placeholder="Nome do template aprovado (ex.: retomar_conversa)" />
+            <datalist id={`templates-${conversationId}`}>
+              {templates.map((t) => (
+                <option key={`${t.name}:${t.language}`} value={t.name}>
+                  {t.language} · {t.parameterCount} parâmetro(s){t.body ? ` · ${t.body.slice(0, 60)}` : ""}
+                </option>
+              ))}
+            </datalist>
             <Input name="templateLanguage" defaultValue="pt_BR" aria-label="Idioma" />
           </div>
           <div className="flex gap-2">

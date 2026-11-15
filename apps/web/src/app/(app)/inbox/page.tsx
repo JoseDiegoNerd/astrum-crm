@@ -7,6 +7,7 @@ import {
   type DealSummary,
   type InboxMessage,
   type MessageStatus,
+  type MessageTemplate,
   type Page,
   type TenantMember,
 } from "@/lib/api";
@@ -84,6 +85,9 @@ export default async function InboxPage({ searchParams }: PageProps<"/inbox">) {
           {list.items.length === 0 && (
             <li className="p-6 text-center text-sm text-zinc-500">
               {view.key === "mine" ? "Nenhuma conversa com você." : "Nenhuma conversa por aqui."}
+              <Link href="/settings/canais" className="mt-2 block text-xs text-indigo-600 hover:underline">
+                Conectar um WhatsApp
+              </Link>
             </li>
           )}
           {list.items.map((conversation) => (
@@ -171,6 +175,11 @@ async function ConversationPane(props: {
     manager ? api<TenantMember[]>(`/tenants/${props.tenantId}/members`) : Promise.resolve([]),
   ]);
   const isResolved = conversation.status === "resolved";
+  // fora da janela de 24 h só vai template: sugere os aprovados na Meta
+  const templates =
+    !conversation.capabilities.freeText && editable && !isResolved
+      ? await workspaceApi<MessageTemplate[]>(`/channels/${conversation.channelId}/templates`).catch(() => [])
+      : [];
   const lastId = messages.items.at(-1)?.id ?? "vazio";
 
   return (
@@ -241,6 +250,7 @@ async function ConversationPane(props: {
           conversationId={id}
           freeText={conversation.capabilities.freeText}
           reason={conversation.capabilities.reason}
+          templates={templates}
           disabled={
             !editable
               ? "Seu papel neste workspace é de leitura."

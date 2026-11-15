@@ -303,6 +303,19 @@ export interface Channel {
   type: string;
   name: string;
   status: "pending" | "connected" | "error" | "disabled";
+  externalId: string | null;
+  externalAccountId: string | null;
   displayIdentifier: string | null;
+  config: { verifiedName?: string };
   lastError: string | null;
+  connectedAt: string | null;
+  webhookUrl: string;
+}
+
+export interface MessageTemplate {
+  name: string;
+  language: string;
+  category?: string;
+  parameterCount: number;
+  body?: string;
 }

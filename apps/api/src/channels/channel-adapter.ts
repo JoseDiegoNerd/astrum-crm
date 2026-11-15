@@ -43,6 +43,25 @@ export interface ChannelSecrets {
   [key: string]: string;
 }
 
+/** Resultado do teste de conexão: o que o provedor diz sobre a conta conectada. */
+export interface ConnectionInfo {
+  /** Ex.: "+55 11 99999-0000" */
+  displayIdentifier: string;
+  /** Nome verificado da conta no provedor, se houver. */
+  verifiedName?: string;
+}
+
+/** Template aprovado pelo provedor (WhatsApp exige template fora da janela de 24 h). */
+export interface MessageTemplate {
+  name: string;
+  language: string;
+  category?: string;
+  /** Quantos parâmetros {{n}} o corpo espera. */
+  parameterCount: number;
+  /** Texto do corpo, para pré-visualização. */
+  body?: string;
+}
+
 /** O que o canal permite agora numa conversa (ex.: janela de 24 h do WhatsApp). */
 export interface SendCapabilities {
   freeText: boolean;
@@ -59,6 +78,9 @@ export interface ChannelAdapter {
   parseWebhook(payload: unknown): NormalizedEvent[];
   send(externalChannelId: string, secrets: ChannelSecrets, message: OutboundMessage): Promise<{ externalId: string }>;
   capabilities(conversation: { lastInboundAt: Date | null }, now?: Date): SendCapabilities;
+  /** Confere credenciais e conta; lança ChannelSendError se algo estiver errado. */
+  checkConnection(externalChannelId: string, secrets: ChannelSecrets): Promise<ConnectionInfo>;
+  listTemplates(externalAccountId: string, secrets: ChannelSecrets): Promise<MessageTemplate[]>;
 }
 
 export class ChannelSendError extends Error {

@@ -20,6 +20,7 @@ import { SecretBox } from './channels/secrets.js';
 import { WhatsAppCloudAdapter } from './channels/whatsapp/whatsapp.adapter.js';
 import { DatabaseModule } from './database/database.module.js';
 import { InboundProcessor } from './inbox/inbound.processor.js';
+import { ChannelsService } from './inbox/channels.service.js';
 import { ConversationsService } from './inbox/conversations.service.js';
 import { ChannelsController, ConversationsController } from './inbox/inbox.controllers.js';
 import { InboxWorker } from './inbox/inbox.worker.js';
@@ -77,6 +78,7 @@ export class AppModule {
         OutboundProcessor,
         InboxWorker,
         ConversationsService,
+        ChannelsService,
         WorkspaceGuard,
       ],
       exports: [ENV],

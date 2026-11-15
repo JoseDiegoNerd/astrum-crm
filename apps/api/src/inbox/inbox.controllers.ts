@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Inject,
@@ -10,11 +11,17 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { asc, channelPublicColumns, channels, eq, withUserContext, type Database, type JwtClaims } from '@astrum/db';
-import { DATABASE } from '../database/database.module.js';
+import type { JwtClaims } from '@astrum/db';
 import { CurrentUser, CurrentWorkspace, type WorkspaceContext } from '../http/request.js';
 import { uuidParam, ZodPipe } from '../http/zod.pipe.js';
 import { WorkspaceGuard } from '../tenancy/workspace.guard.js';
+import {
+  ChannelsService,
+  connectWhatsAppSchema,
+  updateChannelSchema,
+  type ConnectWhatsAppInput,
+  type UpdateChannelInput,
+} from './channels.service.js';
 import { ConversationsService } from './conversations.service.js';
 import { InboxWorker } from './inbox.worker.js';
 import {
@@ -95,13 +102,67 @@ export class ConversationsController {
 @Controller('channels')
 @UseGuards(WorkspaceGuard)
 export class ChannelsController {
-  constructor(@Inject(DATABASE) private readonly db: Database) {}
+  constructor(@Inject(ChannelsService) private readonly channels: ChannelsService) {}
 
-  /** Canais do workspace, sem segredos (usuários não têm acesso a essas colunas). */
+  /** Canais do workspace, sem segredos, com a URL do webhook de cada um. */
   @Get()
   list(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext) {
-    return withUserContext(this.db, user, (tx) =>
-      tx.select(channelPublicColumns).from(channels).where(eq(channels.workspaceId, ws.id)).orderBy(asc(channels.name)),
-    );
+    return this.channels.list(user, ws);
+  }
+
+  /** Conecta um número de WhatsApp (Cloud API). Devolve o verify token uma única vez. */
+  @Post('whatsapp')
+  connectWhatsApp(
+    @CurrentUser() user: JwtClaims,
+    @CurrentWorkspace() ws: WorkspaceContext,
+    @Body(new ZodPipe(connectWhatsAppSchema)) body: ConnectWhatsAppInput,
+  ) {
+    return this.channels.connectWhatsApp(user, ws, body);
+  }
+
+  @Patch(':id')
+  update(
+    @CurrentUser() user: JwtClaims,
+    @CurrentWorkspace() ws: WorkspaceContext,
+    @Param('id', uuidParam) id: string,
+    @Body(new ZodPipe(updateChannelSchema)) body: UpdateChannelInput,
+  ) {
+    return this.channels.update(user, ws, id, body);
+  }
+
+  @Post(':id/test')
+  @HttpCode(200)
+  test(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext, @Param('id', uuidParam) id: string) {
+    return this.channels.test(user, ws, id);
+  }
+
+  @Post(':id/verify-token')
+  @HttpCode(200)
+  rotateVerifyToken(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext, @Param('id', uuidParam) id: string) {
+    return this.channels.rotateVerifyToken(user, ws, id);
+  }
+
+  @Post(':id/disable')
+  @HttpCode(200)
+  disable(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext, @Param('id', uuidParam) id: string) {
+    return this.channels.setEnabled(user, ws, id, false);
+  }
+
+  @Post(':id/enable')
+  @HttpCode(200)
+  enable(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext, @Param('id', uuidParam) id: string) {
+    return this.channels.setEnabled(user, ws, id, true);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  remove(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext, @Param('id', uuidParam) id: string) {
+    return this.channels.remove(user, ws, id);
+  }
+
+  /** Templates aprovados na Meta, para responder fora da janela de 24 h. */
+  @Get(':id/templates')
+  templates(@CurrentUser() user: JwtClaims, @CurrentWorkspace() ws: WorkspaceContext, @Param('id', uuidParam) id: string) {
+    return this.channels.templates(user, ws, id);
   }
 }

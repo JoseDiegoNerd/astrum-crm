@@ -40,6 +40,14 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         <span className="block text-zinc-500">Pipelines, etapas, probabilidades e etapas de ganho/perda.</span>
       </Link>
 
+      <Link
+        href="/settings/canais"
+        className="block rounded-xl border border-zinc-200 p-4 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+      >
+        <span className="font-medium">Canais (WhatsApp) →</span>
+        <span className="block text-zinc-500">Conectar números, testar a conexão e configurar o webhook da Meta.</span>
+      </Link>
+
       <Card title="Tags">
         <ul className="mb-4 divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
           {tags.length === 0 && <li className="py-2 text-zinc-500">Nenhuma tag ainda.</li>}
