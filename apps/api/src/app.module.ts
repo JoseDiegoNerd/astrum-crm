@@ -15,11 +15,15 @@ import { SettingsService } from './crm/settings.service.js';
 import { TasksService } from './crm/tasks.service.js';
 import { TimelineService } from './crm/timeline.service.js';
 import { NotesController, TasksController, TimelineController } from './crm/work.controllers.js';
+import { ChannelRegistry } from './channels/channel-registry.js';
 import { SecretBox } from './channels/secrets.js';
 import { WhatsAppCloudAdapter } from './channels/whatsapp/whatsapp.adapter.js';
 import { DatabaseModule } from './database/database.module.js';
 import { InboundProcessor } from './inbox/inbound.processor.js';
-import { InboundWorker } from './inbox/inbound.worker.js';
+import { ConversationsService } from './inbox/conversations.service.js';
+import { ChannelsController, ConversationsController } from './inbox/inbox.controllers.js';
+import { InboxWorker } from './inbox/inbox.worker.js';
+import { OutboundProcessor } from './inbox/outbound.processor.js';
 import { WhatsAppWebhookController } from './inbox/webhooks.controller.js';
 import { HealthController } from './health.controller.js';
 import { TenancyController } from './tenancy/tenancy.controller.js';
@@ -45,6 +49,8 @@ export class AppModule {
         NotesController,
         TimelineController,
         WhatsAppWebhookController,
+        ConversationsController,
+        ChannelsController,
       ],
       providers: [
         { provide: ENV, useValue: env },
@@ -66,8 +72,11 @@ export class AppModule {
         // canais (F2): sem CHANNEL_SECRETS_KEY a API sobe, mas webhooks/envio respondem 503
         { provide: SecretBox, useFactory: () => (env.CHANNEL_SECRETS_KEY ? new SecretBox(env.CHANNEL_SECRETS_KEY) : null) },
         { provide: WhatsAppCloudAdapter, useFactory: () => new WhatsAppCloudAdapter({ graphVersion: env.WHATSAPP_GRAPH_VERSION }) },
+        ChannelRegistry,
         InboundProcessor,
-        InboundWorker,
+        OutboundProcessor,
+        InboxWorker,
+        ConversationsService,
         WorkspaceGuard,
       ],
       exports: [ENV],

@@ -376,6 +376,9 @@ export const messages = pgTable('messages', {
   sentAt: timestamp('sent_at', { withTimezone: true }),
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
   readAt: timestamp('read_at', { withTimezone: true }),
+  // controle da fila de saída (só o serviço escreve)
+  sendAttempts: integer('send_attempts').notNull().default(0),
+  nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull().defaultNow(),
   ...timestamps,
 });
 

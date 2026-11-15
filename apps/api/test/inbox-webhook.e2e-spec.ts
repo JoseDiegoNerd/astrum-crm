@@ -11,7 +11,7 @@ import { loadEnv } from '../src/config.js';
 import { DATABASE } from '../src/database/database.module.js';
 import { DatabaseErrorFilter } from '../src/http/database-error.filter.js';
 import { InboundProcessor } from '../src/inbox/inbound.processor.js';
-import { InboundWorker } from '../src/inbox/inbound.worker.js';
+import { InboxWorker } from '../src/inbox/inbox.worker.js';
 import { hashVerifyToken } from '../src/inbox/webhooks.controller.js';
 
 // Webhook do WhatsApp de ponta a ponta: HTTP → assinatura → fila → contato/conversa/mensagem.
@@ -35,7 +35,7 @@ describe('Webhook do WhatsApp (e2e)', () => {
   let testDb: TestDatabase;
   let t: Tenancy;
   let app: INestApplication;
-  let worker: InboundWorker;
+  let worker: InboxWorker;
   let processor: InboundProcessor;
   let channelId: string;
   let disabledChannelId: string;
@@ -98,7 +98,7 @@ describe('Webhook do WhatsApp (e2e)', () => {
     app.setGlobalPrefix('v1', { exclude: ['health'] });
     app.useGlobalFilters(new DatabaseErrorFilter(app.get(HttpAdapterHost).httpAdapter));
     await app.init();
-    worker = app.get(InboundWorker);
+    worker = app.get(InboxWorker);
     processor = app.get(InboundProcessor);
   });
 

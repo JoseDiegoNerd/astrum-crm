@@ -24,7 +24,7 @@ import { SecretBox } from '../channels/secrets.js';
 import { WhatsAppCloudAdapter } from '../channels/whatsapp/whatsapp.adapter.js';
 import { DATABASE } from '../database/database.module.js';
 import { InboundProcessor } from './inbound.processor.js';
-import { InboundWorker } from './inbound.worker.js';
+import { InboxWorker } from './inbox.worker.js';
 
 /** O verify token do webhook é guardado só como hash (channels.webhook_secret_hash). */
 export function hashVerifyToken(token: string) {
@@ -45,7 +45,7 @@ export class WhatsAppWebhookController {
     @Inject(DATABASE) private readonly db: Database,
     @Inject(WhatsAppCloudAdapter) private readonly adapter: WhatsAppCloudAdapter,
     @Inject(InboundProcessor) private readonly processor: InboundProcessor,
-    @Inject(InboundWorker) private readonly worker: InboundWorker,
+    @Inject(InboxWorker) private readonly worker: InboxWorker,
     @Optional() @Inject(SecretBox) private readonly secrets: SecretBox | null,
   ) {}
 

@@ -44,6 +44,7 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   notes_workspace_id_deal_id_fkey: 'Negócio não encontrado neste workspace',
   notes_workspace_id_company_id_fkey: 'Empresa não encontrada neste workspace',
   notes_subject_check: 'Informe o contato, negócio ou empresa da nota',
+  conversations_one_active_key: 'Já existe uma conversa ativa com este contato neste canal',
   // mesmas constraints, mas no caminho do delete bloqueado (código 23001)
   '23001:deals_pipeline_id_stage_id_fkey': 'Esta etapa ainda tem negócios; mova-os antes de excluir',
   '23001:deals_workspace_id_pipeline_id_fkey': 'Este pipeline ainda tem negócios; mova-os antes de excluir',
@@ -73,6 +74,11 @@ export function toHttpException(error: unknown): HttpException | undefined {
   const pg = findPgError(error);
   if (!pg) return undefined;
   const mapped = PG_TO_HTTP[pg.code]!;
+  // 42501 vindo das nossas regras (triggers) traz mensagem em português; a da RLS
+  // ("new row violates…" / "permission denied…") é técnica e vira a genérica
+  if (pg.code === '42501' && !/row-level security|permission denied/i.test(pg.message)) {
+    return new HttpException(pg.message, mapped.status);
+  }
   const constraint = pg.constraint_name ?? pg.constraint;
   const byConstraint = constraint
     ? (CONSTRAINT_MESSAGES[`${pg.code}:${constraint}`] ?? CONSTRAINT_MESSAGES[constraint])
