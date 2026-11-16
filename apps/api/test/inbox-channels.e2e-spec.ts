@@ -11,9 +11,12 @@ import { WhatsAppCloudAdapter } from '../src/channels/whatsapp/whatsapp.adapter.
 import { loadEnv } from '../src/config.js';
 import { DATABASE } from '../src/database/database.module.js';
 import { DatabaseErrorFilter } from '../src/http/database-error.filter.js';
+import { metaId } from './meta-ids.js';
 
 // Conexão de canais de ponta a ponta por HTTP, com a Graph API da Meta simulada.
 const GOOD_TOKEN = 'EAAG-token-valido-de-teste-123456';
+// número principal do arquivo: conectar de novo o mesmo número deve dar 409
+const PHONE_NUMBER_ID = metaId();
 
 /** Meta simulada: aceita só GOOD_TOKEN; responde número, templates e envios. */
 const fakeGraph = (async (url: string, init?: RequestInit) => {
@@ -51,7 +54,7 @@ describe('Canais: conectar WhatsApp (e2e)', () => {
   const connect = (userId: string, overrides: Record<string, string> = {}) =>
     call(userId).post('/channels/whatsapp', {
       name: 'WhatsApp Vendas',
-      phoneNumberId: '106540352242922',
+      phoneNumberId: PHONE_NUMBER_ID,
       wabaId: '102290129340398',
       accessToken: GOOD_TOKEN,
       appSecret: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6',
@@ -126,13 +129,13 @@ describe('Canais: conectar WhatsApp (e2e)', () => {
   });
 
   it('agent não conecta, não testa nem gira token', async () => {
-    await connect(t.carol.id, { phoneNumberId: '999990000011111' }).expect(403);
+    await connect(t.carol.id, { phoneNumberId: metaId() }).expect(403);
     await call(t.carol.id).post(`/channels/${channelId}/test`).expect(403);
     await call(t.carol.id).post(`/channels/${channelId}/verify-token`).expect(403);
   });
 
   it('token recusado pela Meta: o canal fica com erro e o motivo; corrigir o token reconecta', async () => {
-    const bad = await connect(t.mia.id, { phoneNumberId: '200000000000001', accessToken: 'EAAG-token-errado-000000000' }).expect(201);
+    const bad = await connect(t.mia.id, { phoneNumberId: metaId(), accessToken: 'EAAG-token-errado-000000000' }).expect(201);
     expect(bad.body.channel).toMatchObject({ status: 'error', lastError: 'Invalid OAuth access token' });
 
     const fixed = await call(t.mia.id).patch(`/channels/${bad.body.channel.id}`, { accessToken: GOOD_TOKEN }).expect(200);
@@ -173,7 +176,7 @@ describe('Canais: conectar WhatsApp (e2e)', () => {
     const blocked = await call(t.mia.id).delete(`/channels/${channelId}`).expect(409);
     expect(blocked.body.message).toMatch(/desative-o em vez de excluir/);
 
-    const spare = await connect(t.mia.id, { phoneNumberId: '300000000000003' }).expect(201);
+    const spare = await connect(t.mia.id, { phoneNumberId: metaId() }).expect(201);
     await call(t.mia.id).delete(`/channels/${spare.body.channel.id}`).expect(204);
   });
 });

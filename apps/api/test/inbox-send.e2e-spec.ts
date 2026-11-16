@@ -14,9 +14,10 @@ import { DATABASE } from '../src/database/database.module.js';
 import { DatabaseErrorFilter } from '../src/http/database-error.filter.js';
 import { InboxWorker } from '../src/inbox/inbox.worker.js';
 import { hashVerifyToken } from '../src/inbox/webhooks.controller.js';
+import { metaId } from './meta-ids.js';
 
 // Atendimento de ponta a ponta por HTTP: inbox → resposta → fila de saída → Meta (simulada) → status.
-const PHONE_NUMBER_ID = '106540352242922';
+const PHONE_NUMBER_ID = metaId();
 const APP_SECRET = 'app-secret-de-teste';
 
 /** Meta simulada: cada envio consome a próxima resposta programada (padrão: sucesso). */

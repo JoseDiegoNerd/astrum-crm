@@ -51,7 +51,7 @@ describe('regras de tags e campos customizados', () => {
   const field = (entity: string, key: string, type: string, options: unknown[] = []) =>
     asMia(
       `insert into custom_field_defs (tenant_id, workspace_id, entity, key, label, type, options)
-       values ($1, $2, $3, $4, $4, $5, $6)`,
+       values ($1, $2, $3, $4, $4, $5, $6::text::jsonb)`, // texto explícito: o driver postgres codificaria a string de novo
       [t.tenantA, t.a1, entity, key, type, JSON.stringify(options)],
     );
 

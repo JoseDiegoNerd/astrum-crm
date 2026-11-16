@@ -34,6 +34,22 @@ describe('toHttpException', () => {
     expect(http?.message).toBe('Já existe um contato com este identificador neste workspace');
   });
 
+  it('exclusão bloqueada por FK restrict vira 409 no Postgres real (23503) e no PGlite (23001)', () => {
+    const real = Object.assign(
+      pg('23503', 'update or delete on table "pipeline_stages" violates foreign key constraint "deals_pipeline_id_stage_id_fkey" on table "deals"'),
+      { constraint_name: 'deals_pipeline_id_stage_id_fkey' },
+    );
+    const pglite = Object.assign(pg('23001'), { constraint: 'deals_pipeline_id_stage_id_fkey' });
+    for (const error of [real, pglite]) {
+      const http = toHttpException(error);
+      expect(http?.getStatus()).toBe(HttpStatus.CONFLICT);
+      expect(http?.message).toBe('Esta etapa ainda tem negócios; mova-os antes de excluir');
+    }
+    // insert com referência inválida continua 422
+    expect(toHttpException(pg('23503', 'insert or update on table "deals" violates foreign key'))?.getStatus())
+      .toBe(HttpStatus.UNPROCESSABLE_ENTITY);
+  });
+
   it('ignora erros que não são do banco', () => {
     expect(toHttpException(new Error('boom'))).toBeUndefined();
   });

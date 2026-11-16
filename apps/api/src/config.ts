@@ -25,7 +25,9 @@ export type Env = z.infer<typeof envSchema>;
 export const ENV = Symbol('ENV');
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  const parsed = envSchema.safeParse(source);
+  // `CHAVE=` vazia (como no .env.example) conta como ausente, não como valor inválido
+  const defined = Object.fromEntries(Object.entries(source).filter(([, value]) => value !== ''));
+  const parsed = envSchema.safeParse(defined);
   if (!parsed.success) {
     throw new Error(`Variáveis de ambiente inválidas:\n${z.prettifyError(parsed.error)}`);
   }

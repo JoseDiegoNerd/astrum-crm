@@ -73,8 +73,13 @@ export function findPgError(error: unknown): PgError | undefined {
 }
 
 export function toHttpException(error: unknown): HttpException | undefined {
-  const pg = findPgError(error);
-  if (!pg) return undefined;
+  const found = findPgError(error);
+  if (!found) return undefined;
+  // FK "on delete restrict": o Postgres real devolve 23503 ("update or delete on
+  // table … violates foreign key"), o PGlite devolve 23001. É exclusão bloqueada
+  // por dependentes (409), não referência inválida num insert (422).
+  const pg =
+    found.code === '23503' && /^update or delete on table/i.test(found.message) ? { ...found, code: '23001' } : found;
   const mapped = PG_TO_HTTP[pg.code]!;
   // 42501 vindo das nossas regras (triggers) traz mensagem em português; a da RLS
   // ("new row violates…" / "permission denied…") é técnica e vira a genérica

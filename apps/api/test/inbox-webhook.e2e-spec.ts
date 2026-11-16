@@ -13,9 +13,10 @@ import { DatabaseErrorFilter } from '../src/http/database-error.filter.js';
 import { InboundProcessor } from '../src/inbox/inbound.processor.js';
 import { InboxWorker } from '../src/inbox/inbox.worker.js';
 import { hashVerifyToken } from '../src/inbox/webhooks.controller.js';
+import { metaId } from './meta-ids.js';
 
 // Webhook do WhatsApp de ponta a ponta: HTTP → assinatura → fila → contato/conversa/mensagem.
-const PHONE_NUMBER_ID = '106540352242922';
+const PHONE_NUMBER_ID = metaId();
 const APP_SECRET = 'app-secret-de-teste';
 const VERIFY_TOKEN = 'verify-token-de-teste';
 
@@ -82,7 +83,7 @@ describe('Webhook do WhatsApp (e2e)', () => {
       return id;
     };
     channelId = await insertChannel('connected', PHONE_NUMBER_ID);
-    disabledChannelId = await insertChannel('disabled', 'outro-numero');
+    disabledChannelId = await insertChannel('disabled', metaId());
 
     const env = loadEnv({
       DATABASE_URL: 'postgres://postgres:postgres@127.0.0.1:1/unused',
